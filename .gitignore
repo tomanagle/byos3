@@ -1,0 +1,30 @@
+# Dependencies & build output
+node_modules/
+dist/
+.output/
+.wrangler/
+*.tsbuildinfo
+
+# Secrets — NEVER commit plaintext or local secrets.
+# Plaintext consumed by `wrangler dev` / vite (generated from SOPS):
+.dev.vars
+.dev.vars.*
+# Local, per-developer SOPS file (gitignored per project decision):
+secrets/local.sops.env
+# Transient plaintext / decrypted artifacts:
+secrets/*.plain.env
+*.decrypted
+*.bulk.json
+# age private keys (must never be committed):
+*.agekey
+keys.txt
+# NOTE: secrets/prod.sops.env IS committed (it is encrypted) — do not ignore it.
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+*.log

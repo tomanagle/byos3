@@ -1,0 +1,12 @@
+# SOPS configuration — encrypts secret VALUES (keys stay readable) using age.
+# Full guide: agents/docs/secrets.md
+#
+# We have two environments for now: local (gitignored, per-developer) and prod
+# (committed, encrypted). Local files are encrypted to each developer's own age
+# key by scripts/setup-secrets.ts (it passes --age explicitly), so they need no
+# rule here. Prod uses the recipients below.
+creation_rules:
+  # Production secrets — committed ENCRYPTED. Replace the placeholder with your
+  # team/CI age public key(s); comma-separate multiple recipients.
+  - path_regex: secrets/prod\.sops\.env$
+    age: "age1REPLACE_WITH_YOUR_PROD_AGE_PUBLIC_KEY"
