@@ -77,3 +77,10 @@ export function languageFor(name: string): LanguageName | null {
 export function isViewableText(name: string, size: number | null): boolean {
   return extOf(name) in EXT_LANG && (size == null || size <= MAX_VIEW_BYTES);
 }
+
+const IMAGE_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg", "avif", "bmp", "ico"]);
+
+/** Is this an image we can show inline (an `<img>` preview, no CORS needed)? */
+export function isImage(name: string): boolean {
+  return IMAGE_EXT.has(extOf(name));
+}
