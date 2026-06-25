@@ -4,6 +4,7 @@ import {
   AppError,
   Connector,
   Volume,
+  createId,
   type ConnectorRepository,
   type DriverFactory,
   type MembershipResolver,
@@ -133,7 +134,7 @@ export class D1ResourceAccessRepository implements ResourceAccessRepository {
   async addVolumeMember(volumeId: string, userId: string, role: ResourceRole): Promise<void> {
     await this.db
       .insert(volumeMemberTbl)
-      .values({ id: crypto.randomUUID(), volumeId, userId, role, createdAt: Date.now() })
+      .values({ id: createId("vmem"), volumeId, userId, role, createdAt: Date.now() })
       .onConflictDoUpdate({
         target: [volumeMemberTbl.volumeId, volumeMemberTbl.userId],
         set: { role },
@@ -168,7 +169,7 @@ export class D1ResourceAccessRepository implements ResourceAccessRepository {
   async addConnectorMember(connectorId: string, userId: string, role: ResourceRole): Promise<void> {
     await this.db
       .insert(connectorMemberTbl)
-      .values({ id: crypto.randomUUID(), connectorId, userId, role, createdAt: Date.now() })
+      .values({ id: createId("cmem"), connectorId, userId, role, createdAt: Date.now() })
       .onConflictDoUpdate({
         target: [connectorMemberTbl.connectorId, connectorMemberTbl.userId],
         set: { role },

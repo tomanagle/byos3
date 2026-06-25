@@ -1,4 +1,5 @@
 import { env } from "cloudflare:workers";
+import { createId } from "@byos3/core";
 import { createSessionDb, waitlist } from "@byos3/db";
 import { WaitlistJoinInput, type WaitlistJoinResult } from "@byos3/protocol";
 import { createServerFn } from "@tanstack/react-start";
@@ -31,7 +32,7 @@ export const joinWaitlist = createServerFn({ method: "POST" })
     await db
       .insert(waitlist)
       .values({
-        id: crypto.randomUUID(),
+        id: createId("wl"),
         email,
         name: data.name ?? null,
         referrer: data.referrer ?? null,

@@ -22,7 +22,8 @@
   "dependencies": {
     "@byos3/protocol": "workspace:*",
     "@byos3/s3": "workspace:*",
-    "better-auth": "^1.0.0"
+    "better-auth": "^1.0.0",
+    "nanoid": "^5.0.9"
   },
   "devDependencies": {
     "@tanstack/intent": "^0.3.2"

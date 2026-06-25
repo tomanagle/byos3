@@ -4,6 +4,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
 import { organization } from "better-auth/plugins/organization";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
+import { createId } from "@byos3/core";
 import { ac, NAMESPACE_ROLES, PLATFORM_ROLES, platformAc } from "@byos3/core/authz";
 import * as schema from "@byos3/db/auth-schema";
 
@@ -64,7 +65,7 @@ export function createAuth(opts: CreateAuthOptions) {
               const adapter = (ctx as { context?: { adapter?: Adapter } })?.context?.adapter;
               if (!adapter) return;
               const now = new Date();
-              const orgId = crypto.randomUUID();
+              const orgId = createId("ns");
               await adapter.create({
                 model: "organization",
                 data: {
@@ -78,7 +79,7 @@ export function createAuth(opts: CreateAuthOptions) {
               await adapter.create({
                 model: "member",
                 data: {
-                  id: crypto.randomUUID(),
+                  id: createId("mem"),
                   organizationId: orgId,
                   userId: createdUser.id,
                   role: "owner",

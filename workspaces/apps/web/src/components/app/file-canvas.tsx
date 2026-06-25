@@ -1,3 +1,4 @@
+import { createId } from "@byos3/core";
 import type { VolumeSummary } from "@byos3/services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, CloudOff, FileText, Folder, FolderPlus, Inbox, Upload } from "lucide-react";
@@ -73,7 +74,7 @@ export function FileCanvas({
       treeCommit({
         data: {
           type: "createFolder",
-          gid: `node_${crypto.randomUUID()}`,
+          gid: createId("node"),
           parentGid: folderGid,
           name,
         },

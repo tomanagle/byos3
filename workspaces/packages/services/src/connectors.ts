@@ -1,4 +1,4 @@
-import { AppError, Connector } from "@byos3/core";
+import { AppError, Connector, createId } from "@byos3/core";
 import { ConnectorRecord, VolumeRecord, type ConnectBucketInput } from "@byos3/protocol";
 import type { ServiceContext } from "./context";
 
@@ -25,7 +25,7 @@ export async function connectBucket(
   const secretCipher = await ctx.vault.seal(input.secret);
   const now = Date.now();
   const draft = ConnectorRecord.parse({
-    id: `conn_${crypto.randomUUID()}`,
+    id: createId("conn"),
     ownerUserId: ctx.principal.userId,
     provider: input.provider,
     endpoint: input.endpoint,
@@ -55,7 +55,7 @@ export async function connectBucket(
   await ctx.connectors.insert(connector);
 
   const volume = VolumeRecord.parse({
-    id: `vol_${crypto.randomUUID()}`,
+    id: createId("vol"),
     connectorId: connector.id,
     namespaceId,
     bucket: input.bucket,

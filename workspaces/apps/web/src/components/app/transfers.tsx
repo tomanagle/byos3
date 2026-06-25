@@ -1,3 +1,4 @@
+import { createId } from "@byos3/core";
 import type { VolumeSummary } from "@byos3/services";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUpFromLine, Check, TriangleAlert, X } from "lucide-react";
@@ -223,11 +224,11 @@ export function TransfersProvider({ children }: { children: ReactNode }) {
             await treeCommit({
               data: {
                 type: "createFile",
-                gid: `node_${crypto.randomUUID()}`,
+                gid: createId("node"),
                 parentGid,
                 name: file.name,
                 volumeId: volume.id,
-                versionId: `ver_${crypto.randomUUID()}`,
+                versionId: createId("ver"),
                 blocklist: [{ hash, size: file.size }],
                 size: file.size,
                 sha256: hash,
