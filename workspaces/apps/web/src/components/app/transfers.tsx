@@ -1,6 +1,6 @@
 import type { VolumeSummary } from "@byos3/services";
 import { useQueryClient } from "@tanstack/react-query";
-import { ArrowUpFromLine, Check, ShieldCheck, TriangleAlert, X } from "lucide-react";
+import { ArrowUpFromLine, Check, TriangleAlert, X } from "lucide-react";
 import {
   createContext,
   type ReactNode,
@@ -35,6 +35,9 @@ interface TransferState {
   volumeLabel: string;
   dot: string;
   files: TFile[];
+  /** A transfer was blocked by the browser (CORS preflight / network) - the bucket likely needs a
+   * CORS policy allowing this app. Surfaced as a hint so the failure isn't a mystery. */
+  blocked?: boolean;
 }
 /** A transfer happening in ANOTHER window/device - driven by relayed `transfer.*` events. */
 interface RemoteTransfer {
@@ -76,7 +79,9 @@ function putWithProgress(
         ? resolve()
         : reject(new Error(`upload failed (${xhr.status})`)),
     );
-    xhr.addEventListener("error", () => reject(new Error("network error")));
+    // A failed CORS preflight surfaces to XHR as a generic error with status 0 (the browser hides the
+    // detail) - tag it so the toast can point the user at CORS setup.
+    xhr.addEventListener("error", () => reject(new Error("cors")));
     xhr.send(file);
   });
 }
@@ -229,8 +234,11 @@ export function TransfersProvider({ children }: { children: ReactNode }) {
               },
             });
             patch(fid, { progress: 100, status: "done" });
-          } catch {
+          } catch (err) {
             patch(fid, { status: "error" });
+            if (err instanceof Error && err.message === "cors") {
+              setState((s) => (s ? { ...s, blocked: true } : s));
+            }
           }
         }),
       ).finally(() => {
@@ -310,15 +318,22 @@ function TransferToast({ state, onClose }: { state: TransferState; onClose: () =
         ))}
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border bg-secondary/40 px-3.5 py-2.5">
-        <ShieldCheck className="size-[15px] shrink-0 text-primary" />
-        <span className="text-[11.5px] text-muted-foreground">
-          <span className="font-medium text-foreground">Direct transfer.</span> byos3 never sees
-          your bytes.
-        </span>
-      </div>
+      {state.blocked && (
+        <div className="flex items-start gap-2 border-t border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5">
+          <TriangleAlert className="mt-0.5 size-[15px] shrink-0 text-amber-400" />
+          <span className="text-[11.5px] text-muted-foreground">
+            <span className="font-medium text-amber-300">Blocked by the browser.</span> This bucket
+            needs a CORS policy allowing {origin()}. Reconnect it to set CORS up.
+          </span>
+        </div>
+      )}
     </div>
   );
+}
+
+/** The app origin to allow in the bucket's CORS policy (shown when a transfer is CORS-blocked). */
+function origin(): string {
+  return typeof window === "undefined" ? "this app" : window.location.origin;
 }
 
 /** Live presence for an upload in another window/device. */
