@@ -1,8 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { Download, FileCode2, Loader2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { downloadUrl } from "#/fn/volumes";
-import { isImage, isViewableText } from "#/lib/file-types";
+import { isViewableText } from "#/lib/file-types";
 import type { ProviderMeta } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
@@ -78,8 +78,6 @@ export function Inspector({
         </p>
       )}
 
-      <Preview entry={entry} />
-
       <Section title="Location">
         <Row
           k="Volume"
@@ -106,79 +104,6 @@ export function Inspector({
       </Section>
     </aside>
   );
-}
-
-/** Inline preview: an image thumbnail, or the first lines of a text/code file. Nothing otherwise. */
-function Preview({ entry }: { entry: FileEntry }) {
-  if (!entry.volumeId || !entry.sha256) return null;
-  if (isImage(entry.name)) {
-    return <ImagePreview volumeId={entry.volumeId} sha256={entry.sha256} alt={entry.name} />;
-  }
-  if (isViewableText(entry.name, entry.size)) {
-    return <TextPreview volumeId={entry.volumeId} sha256={entry.sha256} />;
-  }
-  return null;
-}
-
-function ImagePreview({
-  volumeId,
-  sha256,
-  alt,
-}: {
-  volumeId: string;
-  sha256: string;
-  alt: string;
-}) {
-  const q = useQuery({
-    queryKey: ["preview-url", volumeId, sha256],
-    queryFn: () => downloadUrl({ data: { volumeId, hash: sha256 } }),
-    staleTime: 240_000, // shorter than the 300s presign TTL
-  });
-  return (
-    <Section title="Preview">
-      {q.data ? (
-        <img
-          src={q.data.url}
-          alt={alt}
-          className="max-h-56 w-full rounded-md border border-border bg-background/50 object-contain"
-        />
-      ) : (
-        <div className="grid h-32 place-items-center rounded-md border border-border bg-background/40">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
-      )}
-    </Section>
-  );
-}
-
-function TextPreview({ volumeId, sha256 }: { volumeId: string; sha256: string }) {
-  const q = useQuery({
-    queryKey: ["file-content", volumeId, sha256], // shared with the full editor's fetch
-    staleTime: Number.POSITIVE_INFINITY,
-    queryFn: async () => {
-      const { url } = await downloadUrl({ data: { volumeId, hash: sha256 } });
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(String(res.status));
-      return res.text();
-    },
-  });
-  return (
-    <Section title="Preview">
-      {q.isLoading ? (
-        <div className="h-24 animate-pulse rounded-md bg-secondary/50" />
-      ) : q.isError ? (
-        <p className="text-sm text-muted-foreground">Preview unavailable.</p>
-      ) : (
-        <pre className="max-h-64 overflow-auto rounded-md border border-border bg-background/50 p-2.5 font-mono text-sm leading-relaxed whitespace-pre text-foreground/90">
-          {truncate(q.data ?? "")}
-        </pre>
-      )}
-    </Section>
-  );
-}
-
-function truncate(s: string, max = 4000): string {
-  return s.length > max ? `${s.slice(0, max)}\n…` : s;
 }
 
 function IconButton({
