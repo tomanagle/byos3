@@ -65,7 +65,7 @@ export function VolumeRail({
         </button>
       </nav>
 
-      <div className="flex items-center justify-between px-5 pt-4 pb-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+      <div className="flex items-center justify-between px-5 pt-4 pb-2 text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
         <span>Mounted volumes</span>
         <button
           type="button"
@@ -102,12 +102,12 @@ export function VolumeRail({
                 <span className={cn("size-2.5 shrink-0 rounded-full", p.dot)} />
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate text-[13px] font-medium">{v.label}</span>
-                    <span className="shrink-0 rounded border border-border px-1 font-mono text-[10px] text-muted-foreground">
+                    <span className="truncate text-base font-medium">{v.label}</span>
+                    <span className="shrink-0 rounded border border-border px-1 font-mono text-xs text-muted-foreground">
                       {p.tag}
                     </span>
                   </span>
-                  <span className="mt-0.5 block truncate font-mono text-[10.5px] text-muted-foreground/80">
+                  <span className="mt-0.5 block truncate font-mono text-xs text-muted-foreground/80">
                     {v.bucket}
                   </span>
                 </span>

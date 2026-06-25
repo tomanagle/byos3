@@ -251,7 +251,7 @@ export function FileCanvas({
             />
           ) : (
             <>
-              <div className="grid grid-cols-[1fr_120px] gap-3 border-b border-border px-3 py-2 text-[11.5px] font-semibold uppercase tracking-[0.03em] text-muted-foreground/70">
+              <div className="grid grid-cols-[1fr_120px] gap-3 border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-muted-foreground/70">
                 <span>Name</span>
                 <span>Size</span>
               </div>
@@ -266,9 +266,9 @@ export function FileCanvas({
                     <span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
                       <Folder className="size-4" />
                     </span>
-                    <span className="truncate text-[13.5px] font-medium">{f.name}</span>
+                    <span className="truncate text-base font-medium">{f.name}</span>
                   </span>
-                  <span className="font-mono text-[12.5px] text-muted-foreground/70">folder</span>
+                  <span className="font-mono text-sm text-muted-foreground/70">folder</span>
                 </button>
               ))}
               {files.map((f) => {
@@ -284,7 +284,7 @@ export function FileCanvas({
                     )}
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <span className="relative grid size-9 shrink-0 place-items-center rounded-md bg-secondary font-mono text-[9px] font-bold text-muted-foreground">
+                      <span className="relative grid size-9 shrink-0 place-items-center rounded-md bg-secondary font-mono text-xs font-bold text-muted-foreground">
                         {ext(f.name) || <FileText className="size-4" />}
                         <span
                           className={cn(
@@ -294,9 +294,9 @@ export function FileCanvas({
                           title={p.label}
                         />
                       </span>
-                      <span className="truncate text-[13.5px] font-medium">{f.name}</span>
+                      <span className="truncate text-base font-medium">{f.name}</span>
                     </span>
-                    <span className="font-mono text-[12.5px] tabular-nums text-muted-foreground">
+                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
                       {formatBytes(f.size)}
                     </span>
                   </button>
@@ -306,7 +306,7 @@ export function FileCanvas({
           )}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-border px-6 py-2 text-[11.5px] text-muted-foreground">
+        <div className="flex items-center gap-2 border-t border-border px-6 py-2 text-xs text-muted-foreground">
           {dropVolume && (
             <>
               <Upload className="size-3" />

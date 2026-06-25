@@ -45,7 +45,7 @@ export function KeysScreen() {
     <div className="mx-auto max-w-2xl px-6 py-6">
       <div className="mb-6">
         <h1 className="font-display text-xl font-semibold tracking-tight">API keys</h1>
-        <p className="mt-1 text-[13px] text-muted-foreground">
+        <p className="mt-1 text-base text-muted-foreground">
           Everything here you can do programmatically at{" "}
           <span className="font-mono">api.byos3.com</span>. A key never exceeds your own
           permissions.
@@ -58,7 +58,7 @@ export function KeysScreen() {
             <Check className="size-4" /> Key created - copy it now, it won&apos;t be shown again.
           </div>
           <div className="mt-3 flex items-center gap-2 rounded-lg border border-border bg-secondary/60 p-2.5">
-            <code className="flex-1 truncate font-mono text-[13px]">{create.data.key}</code>
+            <code className="flex-1 truncate font-mono text-base">{create.data.key}</code>
             <button
               type="button"
               onClick={() => copy(create.data!.key)}
@@ -79,7 +79,7 @@ export function KeysScreen() {
       ) : (
         <div className="rounded-xl border border-border bg-card p-5">
           <label className="flex flex-col gap-1.5">
-            <span className="text-[12.5px] font-medium text-muted-foreground">Key name</span>
+            <span className="text-sm font-medium text-muted-foreground">Key name</span>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -89,7 +89,7 @@ export function KeysScreen() {
           </label>
 
           <div className="mt-5">
-            <span className="text-[12.5px] font-medium text-muted-foreground">Scopes</span>
+            <span className="text-sm font-medium text-muted-foreground">Scopes</span>
             <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
               {SCOPES.map((s) => {
                 const on = selected[s.id] ?? false;
@@ -114,9 +114,9 @@ export function KeysScreen() {
                       {on && <Check className="size-3" strokeWidth={3} />}
                     </span>
                     <span className="min-w-0">
-                      <span className="block font-mono text-[12.5px]">{s.id}</span>
+                      <span className="block font-mono text-sm">{s.id}</span>
                       {s.hint && (
-                        <span className="block text-[11px] text-muted-foreground">{s.hint}</span>
+                        <span className="block text-xs text-muted-foreground">{s.hint}</span>
                       )}
                     </span>
                   </button>

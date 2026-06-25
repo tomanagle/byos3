@@ -27,7 +27,7 @@ export function Topbar({ me, active }: { me: Me; active: VolumeSummary | null })
         <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[0_4px_14px_-4px] shadow-primary/50">
           <Boxes className="size-4" strokeWidth={2.4} />
         </span>
-        <span className="font-display text-[15px] font-semibold tracking-tight">
+        <span className="font-display text-base font-semibold tracking-tight">
           byos<span className="text-primary">3</span>
         </span>
       </Link>
@@ -58,7 +58,7 @@ export function Topbar({ me, active }: { me: Me; active: VolumeSummary | null })
       >
         <LogOut className="size-4" />
       </button>
-      <div className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-slate-500 to-slate-800 text-[11px] font-semibold text-white">
+      <div className="grid size-7 place-items-center rounded-full bg-gradient-to-br from-slate-500 to-slate-800 text-xs font-semibold text-white">
         {initials}
       </div>
     </header>

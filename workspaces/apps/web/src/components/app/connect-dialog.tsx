@@ -95,7 +95,7 @@ export function ConnectDialog({
   return (
     <Modal open={open} onClose={close} className="max-w-2xl">
       <div className="border-b border-border px-6 pt-6 pb-5">
-        <div className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary">
+        <div className="text-xs font-semibold uppercase tracking-[0.08em] text-primary">
           Connect a bucket
         </div>
         <h2 className="mt-1.5 font-display text-2xl font-semibold tracking-tight">
@@ -163,8 +163,8 @@ export function ConnectDialog({
                   >
                     {p.tag}
                   </span>
-                  <span className="text-[13.5px] font-medium">{p.label}</span>
-                  <span className="text-[11.5px] text-muted-foreground">{p.hint}</span>
+                  <span className="text-base font-medium">{p.label}</span>
+                  <span className="text-xs text-muted-foreground">{p.hint}</span>
                 </button>
               ))}
             </div>
@@ -172,7 +172,7 @@ export function ConnectDialog({
             <div className="mt-4 grid grid-cols-2 gap-3">
               <Field label="Access key ID">
                 <Input
-                  className="font-mono text-[13px]"
+                  className="font-mono text-base"
                   value={form.accessKeyId}
                   onChange={set("accessKeyId")}
                   placeholder="AKIA…"
@@ -180,7 +180,7 @@ export function ConnectDialog({
               </Field>
               <Field label="Secret access key">
                 <Input
-                  className="font-mono text-[13px]"
+                  className="font-mono text-base"
                   type="password"
                   value={form.secret}
                   onChange={set("secret")}
@@ -189,7 +189,7 @@ export function ConnectDialog({
               </Field>
               <Field label="Region">
                 <Input
-                  className="font-mono text-[13px]"
+                  className="font-mono text-base"
                   value={form.region}
                   onChange={set("region")}
                   placeholder="us-east-1"
@@ -197,7 +197,7 @@ export function ConnectDialog({
               </Field>
               <Field label="Bucket">
                 <Input
-                  className="font-mono text-[13px]"
+                  className="font-mono text-base"
                   value={form.bucket}
                   onChange={set("bucket")}
                   placeholder="my-bucket"
@@ -211,7 +211,7 @@ export function ConnectDialog({
                   error={endpointError}
                 >
                   <Input
-                    className="font-mono text-[13px]"
+                    className="font-mono text-base"
                     value={form.endpoint}
                     onChange={set("endpoint")}
                     placeholder={
@@ -223,7 +223,7 @@ export function ConnectDialog({
               <div className="col-span-2">
                 <Field label="Prefix" hint="scope this volume to a path">
                   <Input
-                    className="font-mono text-[13px]"
+                    className="font-mono text-base"
                     value={form.prefix}
                     onChange={set("prefix")}
                     placeholder="byos3/"
@@ -285,15 +285,15 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[12.5px] font-medium text-muted-foreground">
+      <span className="text-sm font-medium text-muted-foreground">
         {label}
         {hint && <span className="font-normal text-muted-foreground/70"> - {hint}</span>}
       </span>
       {children}
       {error ? (
-        <span className="text-[11.5px] text-destructive">{error}</span>
+        <span className="text-xs text-destructive">{error}</span>
       ) : (
-        help && <span className="text-[11.5px] text-muted-foreground/70">{help}</span>
+        help && <span className="text-xs text-muted-foreground/70">{help}</span>
       )}
     </label>
   );

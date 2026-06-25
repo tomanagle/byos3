@@ -275,12 +275,12 @@ function TransferToast({ state, onClose }: { state: TransferState; onClose: () =
       <div className="flex items-center gap-2.5 px-3.5 py-3">
         <span className={cn("size-2.5 rounded-full", state.dot)} />
         <div className="min-w-0 flex-1">
-          <div className="text-[13.5px] font-semibold">
+          <div className="text-base font-semibold">
             {allFinished
               ? `${done} file${done === 1 ? "" : "s"} uploaded${failed ? ` · ${failed} failed` : ""}`
               : `Uploading ${total} file${total === 1 ? "" : "s"}`}
           </div>
-          <div className="text-[11.5px] text-muted-foreground">
+          <div className="text-xs text-muted-foreground">
             to <span className="text-foreground">{state.volumeLabel}</span>
           </div>
         </div>
@@ -296,14 +296,14 @@ function TransferToast({ state, onClose }: { state: TransferState; onClose: () =
       <div className="flex flex-col gap-2 px-3.5 pb-3">
         {state.files.map((f) => (
           <div key={f.id}>
-            <div className="flex items-center gap-2 text-[12.5px]">
+            <div className="flex items-center gap-2 text-sm">
               <span className="flex-1 truncate text-muted-foreground">{f.name}</span>
               {f.status === "error" ? (
                 <TriangleAlert className="size-3.5 text-destructive" />
               ) : f.status === "done" ? (
                 <Check className="size-3.5 text-ok" />
               ) : (
-                <span className="font-mono text-[11px] text-muted-foreground">{f.progress}%</span>
+                <span className="font-mono text-xs text-muted-foreground">{f.progress}%</span>
               )}
             </div>
             <div className="mt-1 h-1 overflow-hidden rounded-full bg-secondary">
@@ -322,7 +322,7 @@ function TransferToast({ state, onClose }: { state: TransferState; onClose: () =
       {state.blocked && (
         <div className="flex items-start gap-2 border-t border-amber-500/30 bg-amber-500/[0.06] px-3.5 py-2.5">
           <TriangleAlert className="mt-0.5 size-[15px] shrink-0 text-amber-400" />
-          <span className="text-[11.5px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             <span className="font-medium text-amber-300">Blocked by the browser.</span> This bucket
             needs a CORS policy allowing {origin()}. Reconnect it to set CORS up.
           </span>
@@ -355,11 +355,11 @@ function RemoteToast({
       <div className="flex items-center gap-2.5 px-3.5 py-3">
         <ArrowUpFromLine className="size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-medium">
+          <div className="truncate text-base font-medium">
             {remote.done ? "Uploaded" : "Uploading"} {remote.count} file
             {remote.count === 1 ? "" : "s"}
           </div>
-          <div className="truncate text-[11.5px] text-muted-foreground">
+          <div className="truncate text-xs text-muted-foreground">
             by {remote.by} ·{" "}
             <span className={cn("inline-block size-1.5 rounded-full align-middle", remote.dot)} />{" "}
             {remote.volumeLabel}
@@ -368,7 +368,7 @@ function RemoteToast({
         {remote.done ? (
           <Check className="size-4 text-ok" />
         ) : (
-          <span className="font-mono text-[11px] text-muted-foreground">{remote.pct}%</span>
+          <span className="font-mono text-xs text-muted-foreground">{remote.pct}%</span>
         )}
         <button
           type="button"

@@ -19,7 +19,7 @@ export function VolumesScreen({
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h1 className="font-display text-xl font-semibold tracking-tight">Volumes</h1>
-          <p className="mt-1 text-[13px] text-muted-foreground">
+          <p className="mt-1 text-base text-muted-foreground">
             Buckets you own, mounted as drives. byos3 holds only encrypted credentials.
           </p>
         </div>
@@ -54,21 +54,19 @@ export function VolumesScreen({
                 </span>
                 <div className="min-w-0">
                   <div className="truncate font-semibold">{v.label}</div>
-                  <div className="truncate font-mono text-[12px] text-muted-foreground">
-                    {v.bucket}
-                  </div>
+                  <div className="truncate font-mono text-sm text-muted-foreground">{v.bucket}</div>
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/15 px-2 py-0.5 text-[11.5px] text-ok">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/15 px-2 py-0.5 text-xs text-ok">
                   <ShieldCheck className="size-3" /> Connected
                 </span>
                 {v.id === activeId && (
-                  <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[11.5px] text-primary">
+                  <span className="rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-xs text-primary">
                     Drop target
                   </span>
                 )}
-                <span className="ml-auto font-mono text-[11.5px] text-muted-foreground/80">
+                <span className="ml-auto font-mono text-xs text-muted-foreground/80">
                   {p.label}
                 </span>
               </div>

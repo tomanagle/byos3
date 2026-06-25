@@ -39,7 +39,7 @@ export function Inspector({
       <div className="flex items-start justify-between gap-2 p-4">
         <div className="min-w-0">
           <h3 className="font-display text-base font-semibold break-words">{entry.name}</h3>
-          <p className="mt-0.5 font-mono text-[12px] text-muted-foreground">in {volumeLabel}</p>
+          <p className="mt-0.5 font-mono text-sm text-muted-foreground">in {volumeLabel}</p>
         </div>
         <button
           type="button"
@@ -87,10 +87,10 @@ export function Inspector({
       <Section title="Integrity">
         <Row
           k="SHA-256"
-          v={<span className="font-mono text-[11px]">{entry.sha256?.slice(0, 16)}…</span>}
+          v={<span className="font-mono text-xs">{entry.sha256?.slice(0, 16)}…</span>}
         />
         <Row k="Size" v={<span className="font-mono">{entry.size ?? "-"} bytes</span>} />
-        <p className="mt-2 text-[12.5px] text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Content-addressed: the file IS its hash. Downloads mint a short-lived presigned GET
           straight from your bucket.
         </p>
@@ -102,7 +102,7 @@ export function Inspector({
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="border-t border-border p-4">
-      <h4 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground/70">
+      <h4 className="mb-2.5 text-xs font-semibold uppercase tracking-[0.07em] text-muted-foreground/70">
         {title}
       </h4>
       {children}
@@ -112,7 +112,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 function Row({ k, v }: { k: string; v: ReactNode }) {
   return (
-    <div className="flex justify-between gap-3 py-1 text-[13px]">
+    <div className="flex justify-between gap-3 py-1 text-base">
       <span className="text-muted-foreground">{k}</span>
       <span className="text-right">{v}</span>
     </div>

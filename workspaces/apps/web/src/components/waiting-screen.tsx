@@ -55,7 +55,7 @@ export function WaitingScreen() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border/70 px-6 py-4 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase">
+      <div className="flex items-center justify-between border-b border-border/70 px-6 py-4 font-mono text-xs tracking-wide text-muted-foreground uppercase">
         <span className="font-semibold text-foreground">byos3</span>
         <span className="hidden items-center gap-2 sm:inline-flex">
           <span className="size-1.5 animate-pulse rounded-full bg-primary" />
@@ -66,7 +66,7 @@ export function WaitingScreen() {
       <div className="mx-auto grid max-w-6xl gap-14 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20 lg:py-28">
         <section className="flex flex-col justify-center">
           <span
-            className="byos3-rise inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase"
+            className="byos3-rise inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-xs tracking-wide text-muted-foreground uppercase"
             style={{ animationDelay: "40ms" }}
           >
             <span className="size-1.5 rounded-full bg-primary" />
@@ -183,7 +183,7 @@ export function WaitingScreen() {
                   </p>
                 )}
 
-                <p className="font-mono text-[0.7rem] leading-relaxed text-muted-foreground/80">
+                <p className="font-mono text-xs leading-relaxed text-muted-foreground/80">
                   We'll only email you about the byos3 launch.
                 </p>
               </form>

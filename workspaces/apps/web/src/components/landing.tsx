@@ -139,7 +139,7 @@ export function Landing() {
       </section>
 
       <footer className="relative z-10 border-t border-border/70">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 font-mono text-xs tracking-wide text-muted-foreground uppercase">
           <span className="font-semibold text-foreground">byos3</span>
           <span>your files, your bucket, your policies</span>
         </div>
