@@ -1,0 +1,31 @@
+{
+  "name": "@byos3/auth",
+  "version": "0.0.0",
+  "private": true,
+  "keywords": [
+    "tanstack-intent"
+  ],
+  "homepage": "https://github.com/tomanagle/byos3#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomanagle/byos3.git",
+    "directory": "workspaces/packages/auth"
+  },
+  "files": [
+    "skills"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@better-auth/api-key": "1.6.20",
+    "@byos3/core": "workspace:*",
+    "@byos3/db": "workspace:*",
+    "better-auth": "^1.6.20",
+    "drizzle-orm": "latest"
+  },
+  "devDependencies": {
+    "@tanstack/intent": "^0.3.2"
+  }
+}

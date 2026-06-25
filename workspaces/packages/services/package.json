@@ -1,0 +1,29 @@
+{
+  "name": "@byos3/services",
+  "version": "0.0.0",
+  "private": true,
+  "keywords": [
+    "tanstack-intent"
+  ],
+  "homepage": "https://github.com/tomanagle/byos3#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomanagle/byos3.git",
+    "directory": "workspaces/packages/services"
+  },
+  "files": [
+    "skills"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@byos3/core": "workspace:*",
+    "@byos3/protocol": "workspace:*",
+    "@byos3/s3": "workspace:*"
+  },
+  "devDependencies": {
+    "@tanstack/intent": "^0.3.2"
+  }
+}
