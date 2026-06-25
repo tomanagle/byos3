@@ -1,0 +1,6 @@
+name: byos3
+runtime:
+  name: nodejs
+  options:
+    packagemanager: bun
+description: byos3 Cloudflare infrastructure — D1 database + Turnstile widget.

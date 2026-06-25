@@ -1,0 +1,66 @@
+# Local containerized dev for byos3 — `bun run docker:up`.
+#
+#   web → http://localhost:${WEB_PORT:-4500}   (TanStack Start / vite dev, under Node)
+#   api → http://localhost:${API_PORT:-8788}   (Hono / wrangler dev — workerd, under Node)
+#
+# Both Workers share ONE local-D1 volume (a key minted on web verifies on api), exactly like prod
+# where they bind the same D1. The `migrator` service applies migrations to that volume and then
+# WATCHES the migrations dir (bind-mounted from the host) — save a new migration and it auto-applies.
+# web/api wait for the migrator to be healthy (initial migrations done) before starting.
+#
+# Servers run under Node, not Bun (Wrangler doesn't support the Bun runtime). Tear down with
+# `bun run docker:nuke`. Host ports default to 4500/8788 (3000 is taken on some machines); override
+# with `WEB_PORT=4000 API_PORT=9000 bun run docker:up`.
+name: byos3-dev
+
+services:
+  migrator:
+    image: byos3-dev:local
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile
+    command: node /app/dev/migrate-watch.mjs
+    volumes:
+      - d1:/state
+      # Bind the host migrations dir so newly-saved migrations are seen + auto-applied.
+      - ../workspaces/apps/web/migrations:/app/workspaces/apps/web/migrations:ro
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/migrator-ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 5s
+
+  web:
+    image: byos3-dev:local
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile
+    working_dir: /app/workspaces/apps/web
+    command: npx vite dev --host 0.0.0.0 --port 4500
+    ports:
+      - "${WEB_PORT:-4500}:4500"
+    # The vite/cloudflare plugin persists local D1 under .wrangler/state — back it with the shared volume.
+    volumes:
+      - d1:/app/workspaces/apps/web/.wrangler/state
+    depends_on:
+      migrator:
+        condition: service_healthy
+
+  api:
+    image: byos3-dev:local
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile
+    working_dir: /app/workspaces/apps/api
+    command: npx wrangler dev --ip 0.0.0.0 --port 8787 --persist-to /state
+    ports:
+      - "${API_PORT:-8788}:8787"
+    volumes:
+      - d1:/state
+    depends_on:
+      migrator:
+        condition: service_healthy
+
+volumes:
+  d1:

@@ -1,0 +1,40 @@
+# Minimal S3-compatible fake bucket for e2e tests — a MinIO server + a one-shot bucket creator.
+# Driven by `bun run e2e:s3` (scripts/e2e-s3.ts), which brings this up, runs the presigned
+# round-trip test through the `custom` provider, then tears it down. You can also leave it running
+# and connect to it from the web app's Connect dialog as a "Custom S3" volume:
+#   endpoint http://localhost:9400 · key byos3 · secret byos3secret · bucket byos3-e2e
+name: byos3-e2e
+
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-byos3}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-byos3secret}
+    ports:
+      # Non-standard host ports (9000/9001 are often taken — e.g. OrbStack), matching the project's
+      # 4500/8788 convention. Override with MINIO_PORT / MINIO_CONSOLE_PORT.
+      - "${MINIO_PORT:-9400}:9000"
+      - "${MINIO_CONSOLE_PORT:-9401}:9001"
+
+  # Creates the e2e bucket once MinIO is up, then exits 0. `up --wait` blocks until this completes.
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-byos3}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-byos3secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-byos3-e2e}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo "waiting for minio..."; sleep 1;
+        done
+        mc mb -p "local/$$MINIO_BUCKET"
+        echo "bucket local/$$MINIO_BUCKET ready"

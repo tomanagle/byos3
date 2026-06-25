@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * setup-secrets.ts — interactive LOCAL secrets bootstrap (SOPS + age).
+ * setup-secrets.ts - interactive LOCAL secrets bootstrap (SOPS + age).
  *
  *   bun run secrets:setup          prompt for values → encrypted local file + .dev.vars
  *   bun run secrets:setup --sync   regenerate .dev.vars from the existing encrypted file
@@ -10,7 +10,7 @@
  *   apps/web/.dev.vars       plaintext for `wrangler dev` / vite, GITIGNORED
  *     (falls back to repo-root .dev.vars until apps/web exists)
  *
- * These are PLATFORM secrets (the Worker's own) — NOT end-user bucket creds.
+ * These are PLATFORM secrets (the Worker's own) - NOT end-user bucket creds.
  * See agents/docs/secrets.md.
  */
 import { $ } from "bun";
@@ -43,7 +43,7 @@ if (!pub) die(`Could not read an age public key from ${keyFile}`);
 
 // 3. --sync: just decrypt the existing encrypted file into .dev.vars
 if (SYNC) {
-  if (!(await Bun.file(ENC).exists())) die(`${ENC} not found — run without --sync first.`);
+  if (!(await Bun.file(ENC).exists())) die(`${ENC} not found - run without --sync first.`);
   await writeDevVars(
     await $`sops --decrypt --input-type dotenv --output-type dotenv ${ENC}`.text(),
   );
@@ -52,7 +52,11 @@ if (SYNC) {
 
 // 4. Prompt for each secret
 const SECRETS: { key: string; desc: string; gen?: () => string; optional?: boolean }[] = [
-  { key: "CREDENTIAL_ENCRYPTION_KEY", desc: "root key for envelope-encrypting user bucket creds", gen: () => rand(32) },
+  {
+    key: "CREDENTIAL_ENCRYPTION_KEY",
+    desc: "root key for envelope-encrypting user bucket creds",
+    gen: () => rand(32),
+  },
   { key: "BETTER_AUTH_SECRET", desc: "Better Auth session secret", gen: () => rand(32) },
   { key: "STRIPE_SECRET_KEY", desc: "Stripe secret (sk_test_… locally)" },
   { key: "STRIPE_WEBHOOK_SECRET", desc: "Stripe webhook signing secret (whsec_…)" },
@@ -60,11 +64,11 @@ const SECRETS: { key: string; desc: string; gen?: () => string; optional?: boole
   { key: "GOOGLE_CLIENT_SECRET", desc: "Google OAuth client secret (optional)", optional: true },
 ];
 
-console.log("\nLocal secrets setup. Input is echoed — run in a private terminal.\n");
+console.log("\nLocal secrets setup. Input is echoed - run in a private terminal.\n");
 const lines: string[] = [];
 for (const s of SECRETS) {
   const hint = s.gen ? " [enter = auto-generate]" : s.optional ? " [enter = skip]" : "";
-  const input = (prompt(`${s.key} — ${s.desc}${hint}:`) ?? "").trim();
+  const input = (prompt(`${s.key} - ${s.desc}${hint}:`) ?? "").trim();
   const value = input || (s.gen ? s.gen() : "");
   if (!value && !s.optional) console.warn(`  ! ${s.key} left empty`);
   if (value || !s.optional) lines.push(`${s.key}=${value}`);
@@ -77,7 +81,7 @@ const tmp = join(tmpdir(), `byos3-local-${rand(6)}.env`);
 await Bun.write(tmp, plaintext);
 try {
   // --config /dev/null: local files are encrypted to an explicit --age key, so bypass
-  // .sops.yaml (whose only rule is for prod) — otherwise sops errors "no matching creation rules".
+  // .sops.yaml (whose only rule is for prod) - otherwise sops errors "no matching creation rules".
   const enc =
     await $`sops --encrypt --age ${pub} --config /dev/null --input-type dotenv --output-type dotenv ${tmp}`.text();
   await Bun.write(ENC, enc);
@@ -92,14 +96,16 @@ console.log("\nDone. Re-run with --sync after pulling changes to refresh .dev.va
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 async function writeDevVars(content: string) {
-  const appDir = join(ROOT, "apps", "web");
+  const appDir = join(ROOT, "workspaces", "apps", "web");
   const target = (await isDir(appDir)) ? join(appDir, ".dev.vars") : join(ROOT, ".dev.vars");
   await Bun.write(target, content);
   console.log(`Wrote ${target} for \`wrangler dev\`.`);
 }
 async function isDir(p: string) {
   try {
-    return (await Bun.file(join(p, "package.json")).exists()) || (await Bun.file(p).stat()).isDirectory();
+    return (
+      (await Bun.file(join(p, "package.json")).exists()) || (await Bun.file(p).stat()).isDirectory()
+    );
   } catch {
     return false;
   }

@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * deploy-secrets.ts — push PRODUCTION secrets to the Worker.
+ * deploy-secrets.ts - push PRODUCTION secrets to the Worker.
  *
  *   bun run secrets:deploy
  *
@@ -15,7 +15,10 @@ import { tmpdir } from "node:os";
 
 const ROOT = join(import.meta.dir, "..");
 const PROD = join(ROOT, "secrets", "prod.sops.env");
-const APP = join(ROOT, "apps", "web");
+// Both Workers get the prod secrets. The api worker needs CREDENTIAL_ENCRYPTION_KEY +
+// BETTER_AUTH_SECRET; web additionally uses TURNSTILE/STRIPE. `secret bulk` pushes the whole set -
+// secrets a worker doesn't read are simply inert. See agents/docs/secrets.md.
+const APPS = [join(ROOT, "workspaces", "apps", "web"), join(ROOT, "workspaces", "apps", "api")];
 $.cwd(ROOT);
 
 if (!Bun.which("sops")) die("'sops' not found. Install with:  brew install sops age");
@@ -38,11 +41,15 @@ if ((prompt("Type 'deploy' to confirm:") ?? "").trim() !== "deploy") die("Aborte
 const tmp = join(tmpdir(), `byos3-prod-${Math.trunc(performance.now())}.bulk.json`);
 await Bun.write(tmp, JSON.stringify(obj));
 try {
-  await $`bunx wrangler secret bulk ${tmp}`.cwd(APP);
+  for (const app of APPS) {
+    console.log(`→ ${app}`);
+    // oxlint-disable-next-line no-await-in-loop -- push to each worker sequentially for clean output
+    await $`bunx wrangler secret bulk ${tmp}`.cwd(app);
+  }
 } finally {
   await rm(tmp, { force: true });
 }
-console.log("Pushed.");
+console.log("Pushed to web + api.");
 
 function die(msg: string): never {
   console.error(`Error: ${msg}`);

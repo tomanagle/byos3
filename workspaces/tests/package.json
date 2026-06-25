@@ -1,0 +1,18 @@
+{
+  "name": "@byos3/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "description": "End-to-end tests (Playwright). Unit/integration tests live with their packages (bun/vite).",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "dependencies": {
+    "@byos3/protocol": "workspace:*",
+    "@byos3/s3": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}
