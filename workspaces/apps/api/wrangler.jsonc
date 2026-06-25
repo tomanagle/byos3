@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "byos3-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // The public API is served at api.byos3.com. `custom_domain: true` makes Wrangler provision the
+  // proxied DNS record + edge TLS for this hostname on deploy. See agents/docs/deployment.md, api.md.
+  "routes": [{ "pattern": "api.byos3.com", "custom_domain": true }],
+  // Binds the SAME D1 database as apps/web (both reference it by id in production). The auth tables
+  // (apikey, member, …) and storage tables (connector, volume) are shared. See agents/docs/api.md.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "byos3",
+      // Local dev ignores this; for remote deploy paste the id from `wrangler d1 create byos3`.
+      "database_id": "local-dev-placeholder",
+      "migrations_dir": "../web/migrations",
+    },
+  ],
+}

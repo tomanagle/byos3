@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "byos3-web",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  // Custom entry re-exports the Start handler + the Namespace Durable Object class.
+  "main": "src/server.ts",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "NAMESPACE", "class_name": "Namespace" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Namespace"] }],
+  // The app is served at the apex byos3.com. `custom_domain: true` makes Wrangler provision the
+  // proxied DNS record + edge TLS for this hostname on deploy (the zone must exist in the account).
+  // There is intentionally no app.byos3.com. See agents/docs/deployment.md.
+  "routes": [{ "pattern": "byos3.com", "custom_domain": true }],
+  "vars": {
+    // Cloudflare Turnstile PUBLIC test site key (always passes). Replace per-env for production.
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "byos3",
+      // Local dev ignores this; for remote deploy run `wrangler d1 create byos3` and paste the id.
+      "database_id": "local-dev-placeholder",
+      "migrations_dir": "migrations",
+    },
+  ],
+  // TURNSTILE_SECRET_KEY is a secret: local via .dev.vars, prod via `wrangler secret put` (SOPS-managed).
+}
