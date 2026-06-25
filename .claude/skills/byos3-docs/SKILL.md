@@ -1,6 +1,6 @@
 ---
 name: byos3-docs
-description: Routes agents to the right design/architecture doc in agents/docs/ before writing or reviewing byos3 code. Use whenever implementing, modifying, debugging, or reviewing any part of byos3 — the BYO-S3 Dropbox-style file-sync app on Cloudflare Workers (sync engine, storage/S3, auth, billing/subscriptions, namespaces/ACL, web UI, or AI/RAG).
+description: Routes agents to the right design/architecture doc in agents/docs/ before writing or reviewing byos3 code. Use whenever implementing, modifying, debugging, or reviewing any part of byos3 - the BYO-S3 file-sync app on Cloudflare Workers (sync engine, storage/S3, auth, billing/subscriptions, namespaces/ACL, web UI, or AI/RAG).
 ---
 
 # byos3 documentation router
@@ -10,12 +10,12 @@ written; `agents/plans/` holds the phased roadmap. Read the relevant doc **befor
 **update the doc in the same change** when you alter behavior.
 
 ## Always start with
-- `agents/docs/architecture.md` — the big picture (control plane vs data plane, the splits).
-- `agents/docs/foundational-considerations.md` — Dropbox lessons + the load-bearing decisions you must not break.
-- `agents/docs/conventions.md` — how code must be written here.
-- `agents/docs/code-architecture.md` — how packages/entities/ports fit together (ports & adapters,
+- `agents/docs/architecture.md` - the big picture (control plane vs data plane, the splits).
+- `agents/docs/foundational-considerations.md` - Dropbox lessons + the load-bearing decisions you must not break.
+- `agents/docs/conventions.md` - how code must be written here.
+- `agents/docs/code-architecture.md` - how packages/entities/ports fit together (ports & adapters,
   `Volume`/`Connector` facades, composition root, sealed credentials).
-- `AGENTS.md` (repo root) — golden rules / invariants.
+- `AGENTS.md` (repo root) - golden rules / invariants.
 
 ## Then read the doc for your area
 | Task | Doc |
@@ -34,7 +34,7 @@ written; `agents/plans/` holds the phased roadmap. Read the relevant doc **befor
 | Routes, auth flow, waitlist gate, shell layout | `agents/docs/routing.md` |
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability (wide events) | `agents/docs/logging.md` |
-| Secrets management (SOPS/age) | `agents/docs/secrets.md` |
+| Secrets management (.dev.vars / GitHub secrets) | `agents/docs/secrets.md` |
 | Deployment, CI/CD, Pulumi, oxlint/oxfmt/lefthook | `agents/docs/deployment.md` |
 | Monorepo, Bun-vs-Wrangler, builds, testing | `agents/docs/monorepo.md` |
 | Competitors / prior art / positioning | `agents/docs/prior-art.md` |
@@ -47,4 +47,4 @@ written; `agents/plans/` holds the phased roadmap. Read the relevant doc **befor
 5. No business logic in transport layers; contracts are Zod schemas in `packages/protocol`.
 6. We monetize the service, not storage GB.
 
-If a doc and the code disagree, treat it as a bug and reconcile — don't silently follow either.
+If a doc and the code disagree, treat it as a bug and reconcile - don't silently follow either.

@@ -24,7 +24,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "A Dropbox-style sync app that stores everything in storage you own: S3, Cloudflare R2, or Backblaze.",
+          "A file sync app that stores everything in storage you own: S3, Cloudflare R2, or Backblaze.",
       },
     ],
     links: [{ rel: "stylesheet", href: appCss }],

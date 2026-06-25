@@ -88,7 +88,7 @@ export function WaitingScreen() {
             className="byos3-rise mt-7 max-w-md text-lg leading-relaxed text-pretty text-muted-foreground"
             style={{ animationDelay: "200ms" }}
           >
-            A Dropbox-style sync app that keeps every byte in storage{" "}
+            A file sync app that keeps every byte in storage{" "}
             <span className="text-foreground">you</span> own: AWS S3, Cloudflare R2, or Backblaze.
             We run the sync, sharing and API. You pay for the service, never per-gigabyte rent.
           </p>

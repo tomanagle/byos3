@@ -57,14 +57,6 @@ export function Landing() {
 
       {/* ── Hero ── */}
       <section className="relative z-10 mx-auto max-w-6xl px-6 pt-16 pb-20 text-center lg:pt-24">
-        <span
-          className="byos3-rise mx-auto inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase"
-          style={{ animationDelay: "40ms" }}
-        >
-          <span className="size-1.5 rounded-full bg-primary" />
-          bring-your-own storage
-        </span>
-
         <h1
           className="byos3-rise mx-auto mt-6 max-w-3xl font-display text-5xl leading-[0.95] font-extrabold tracking-tight text-balance sm:text-6xl lg:text-7xl"
           style={{ animationDelay: "120ms" }}
@@ -76,8 +68,8 @@ export function Landing() {
           className="byos3-rise mx-auto mt-7 max-w-xl text-lg leading-relaxed text-pretty text-muted-foreground"
           style={{ animationDelay: "200ms" }}
         >
-          A Dropbox-style workspace that keeps every byte in storage you own. byos3 runs the sync,
-          sharing and API; you keep the bucket and pay for the service, never per-gigabyte rent.
+          A file workspace that keeps every byte in storage you own. byos3 runs the sync, sharing
+          and API; you keep the bucket and pay for the service, never per-gigabyte rent.
         </p>
 
         <div
@@ -127,7 +119,7 @@ export function Landing() {
                 <Icon className="size-5" strokeWidth={2} />
               </span>
               <h3 className="mt-4 font-display text-lg font-semibold tracking-tight">{title}</h3>
-              <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">{body}</p>
+              <p className="mt-1.5 text-base leading-relaxed text-muted-foreground">{body}</p>
             </div>
           ))}
         </div>
@@ -149,7 +141,7 @@ export function Landing() {
       <footer className="relative z-10 border-t border-border/70">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase">
           <span className="font-semibold text-foreground">byos3</span>
-          <span>your files, your bucket, your rules</span>
+          <span>your files, your bucket, your policies</span>
         </div>
       </footer>
     </main>

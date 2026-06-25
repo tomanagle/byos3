@@ -1,36 +1,36 @@
-# AGENTS.md — byos3
+# AGENTS.md - byos3
 
 Canonical instructions for any AI agent (Claude Code, Codex, Cursor, …) working in this repo.
 `CLAUDE.md` defers to this file. Read it before writing or reviewing code.
 
 ## What this is
 
-**byos3** is a Dropbox/Google-Drive-style file storage & sync app with a twist: users **bring
+**byos3** is a file storage & sync app with a twist: users **bring
 their own S3-compatible bucket** (AWS S3, Cloudflare R2, or Backblaze B2). We are the *control
 plane*; their bucket is the *data plane*. The whole thing runs on Cloudflare Workers as a
 monorepo.
 
-## Golden rules (invariants — violating these is a bug)
+## Golden rules (invariants - violating these is a bug)
 
 1. **Bytes never flow through the Worker.** Clients upload/download directly to the user's
    bucket via short-lived presigned URLs the Worker mints. The only sanctioned exception is the
    plan-gated, opt-in AI indexer (see `agents/docs/ai-rag.md`).
 2. **Metadata and blobs are separate paths.** A file is metadata (a path + an ordered list of
-   content hashes — a *blocklist*); content is immutable, content-addressed objects in the
+   content hashes - a *blocklist*); content is immutable, content-addressed objects in the
    user's bucket keyed by SHA-256.
 3. **The Durable Object is the single writer.** All mutations for a namespace are serialized by
-   its `Namespace` DO. The journal sequence number is the logical clock — don't invent another.
+   its `Namespace` DO. The journal sequence number is the logical clock - don't invent another.
 4. **Commit references hashes, never bytes, and only after blobs are durable.** Upload is
    two-phase: ask which chunks are missing → upload them → commit the blocklist. Idempotent.
 5. **No business logic in transport layers.** TanStack server functions and `/api/v1` HTTP
    routes are thin wrappers over `packages/core`. Logic lives in packages, not in the edges.
 6. **Contracts are Zod schemas in `packages/protocol`.** Both client and server import them.
    Never hand-write a type that should be derived from a schema.
-7. **The user's bucket is mutable and untrusted as a source of truth** — reconcile against the
+7. **The user's bucket is mutable and untrusted as a source of truth** - reconcile against the
    journal; trust client-computed SHA-256, not provider ETags (ETag ≠ content hash on multipart).
 8. **Storage is BYO, so we don't sell GB.** We monetize the *service* (devices, seats, history
    depth, AI). Entitlements gate features, never raw storage size.
-9. **One wide event per request/hop — never scattered log lines.** A single request builds one
+9. **One wide event per request/hop - never scattered log lines.** A single request builds one
    large structured event, emitted once at the end. See `agents/docs/logging.md`.
 10. **API-first.** Everything the web can do is doable via the versioned **`/api/v1`** with an **API
    key**. Session (web) and API key (programmatic) are two *authentication* methods over one
@@ -40,9 +40,9 @@ monorepo.
 
 ```
 apps/
-  web/        TanStack Start app — IS the Worker. Hosts the Namespace DO (src/server.ts),
+  web/        TanStack Start app - IS the Worker. Hosts the Namespace DO (src/server.ts),
               React UI, server functions (web data layer), and /api/v1 HTTP routes (daemon contract).
-  desktop/    (Phase 4) native sync daemon — not built yet.
+  desktop/    (Phase 4) native sync daemon - not built yet.
 packages/
   ui/         shadcn/ui components + Tailwind preset (shared design system).
   core/       chunking, SHA-256, blocklist, journal ops, three-tree diff, conflict logic.
@@ -56,7 +56,7 @@ agents/
   plans/      The phased build roadmap.
 ```
 
-## Doc map — read the relevant doc before touching that area
+## Doc map - read the relevant doc before touching that area
 
 | Working on… | Read |
 |---|---|
@@ -79,7 +79,7 @@ agents/
 | Routes, auth flow, waitlist gate, shell layout | `agents/docs/routing.md` |
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability | `agents/docs/logging.md` |
-| Secrets (SOPS/age), .dev.vars, prod deploy | `agents/docs/secrets.md` |
+| Secrets (.dev.vars local, GitHub secrets prod) | `agents/docs/secrets.md` |
 | CI/CD, Pulumi IaC, GitHub Actions, oxlint/oxfmt/lefthook | `agents/docs/deployment.md` |
 | Monorepo, Bun vs Wrangler, builds | `agents/docs/monorepo.md` |
 
@@ -95,7 +95,7 @@ agents/
 ## Tooling (see `agents/docs/monorepo.md` for detail)
 
 - **Bun** = package manager, workspaces, and test runner for pure packages. **Workers do NOT run
-  on Bun** — no `Bun.serve`/`bun:sqlite`/`Bun.sql` inside the Worker.
+  on Bun** - no `Bun.serve`/`bun:sqlite`/`Bun.sql` inside the Worker.
 - **Wrangler / `@cloudflare/vite-plugin`** = dev & deploy the Worker. `npm run dev`,
   `npm run deploy`, `npm run cf-typegen` (binding types).
 - `bun test` for `packages/*`; Vitest Workers pool for Worker/DO code.
