@@ -87,3 +87,20 @@ export const volumeMember = sqliteTable(
 );
 
 export type VolumeMemberRow = typeof volumeMember.$inferSelect;
+
+/** Per-user UI preferences (one row per user). Persisted server-side; cached in localStorage so the
+ * chosen file layout follows the user across devices. See web-app.md. */
+export const userPreferences = sqliteTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  fileView: text("file_view", { enum: ["grid", "list", "tree"] })
+    .notNull()
+    .default("list"),
+  gridSize: text("grid_size", { enum: ["small", "large"] })
+    .notNull()
+    .default("large"),
+  updatedAt: integer("updated_at").notNull(),
+});
+
+export type UserPreferencesRow = typeof userPreferences.$inferSelect;

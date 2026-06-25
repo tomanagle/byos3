@@ -22,3 +22,4 @@ export type WaitlistJoinResult = z.infer<typeof WaitlistJoinResult>;
 
 export * from "./storage";
 export * from "./sync";
+export * from "./preferences";

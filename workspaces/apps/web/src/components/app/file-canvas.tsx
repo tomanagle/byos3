@@ -1,10 +1,25 @@
 import { createId } from "@byos3/core";
 import type { VolumeSummary } from "@byos3/services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, CloudOff, FileText, Folder, FolderPlus, Inbox, Upload } from "lucide-react";
+import {
+  ChevronRight,
+  CloudOff,
+  FileText,
+  Folder,
+  FolderPlus,
+  Grid2x2,
+  Grid3x3,
+  Inbox,
+  LayoutGrid,
+  List,
+  ListTree,
+  Upload,
+} from "lucide-react";
 import { type DragEvent, useRef, useState } from "react";
+import type { TreeEntry } from "#/fn/tree";
 import { treeAncestors, treeCommit, treeList } from "#/fn/tree";
-import { providerFor } from "#/lib/providers";
+import { useFileView } from "#/lib/use-file-view";
+import { type ProviderMeta, providerFor } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 import { Inspector } from "./inspector";
 import { useTransfers } from "./transfers";
@@ -55,6 +70,7 @@ export function FileCanvas({
   const [creating, setCreating] = useState(false);
   const [folderName, setFolderName] = useState("");
   const { upload } = useTransfers();
+  const { fileView, gridSize, setFileView, setGridSize } = useFileView();
 
   const dropVolume = volumes.find((v) => v.id === dropVolumeId) ?? volumes[0];
   const volumeProvider = (volumeId: string | null) =>
@@ -163,6 +179,14 @@ export function FileCanvas({
             ))}
           </nav>
           <div className="flex-1" />
+
+          <ViewControls
+            fileView={fileView}
+            gridSize={gridSize}
+            onFileView={setFileView}
+            onGridSize={setGridSize}
+          />
+
           <button
             type="button"
             onClick={() => setCreating((c) => !c)}
@@ -196,12 +220,12 @@ export function FileCanvas({
               value={folderName}
               onChange={(e) => setFolderName(e.target.value)}
               placeholder="Folder name"
-              className="h-8 flex-1 rounded-md border border-border bg-card px-2.5 text-sm outline-none focus:border-primary/50"
+              className="h-8 flex-1 rounded-md border border-border bg-card px-2.5 text-base outline-none focus:border-primary/50"
             />
             <button
               type="submit"
               disabled={newFolder.isPending}
-              className="text-sm font-medium text-primary"
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground disabled:opacity-60"
             >
               {newFolder.isPending ? "Creating…" : "Create"}
             </button>
@@ -249,60 +273,33 @@ export function FileCanvas({
                 ) : undefined
               }
             />
+          ) : fileView === "grid" ? (
+            <GridView
+              folders={folders}
+              files={files}
+              gridSize={gridSize}
+              selectedGid={selectedGid}
+              onNavigateFolder={onNavigateFolder}
+              onSelectGid={onSelectGid}
+              providerOf={volumeProvider}
+            />
+          ) : fileView === "tree" ? (
+            <FileTree
+              parentGid={folderGid}
+              depth={0}
+              selectedGid={selectedGid}
+              onSelectGid={onSelectGid}
+              volumes={volumes}
+            />
           ) : (
-            <>
-              <div className="grid grid-cols-[1fr_120px] gap-3 border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-muted-foreground/70">
-                <span>Name</span>
-                <span>Size</span>
-              </div>
-              {folders.map((f) => (
-                <button
-                  key={f.gid}
-                  type="button"
-                  onClick={() => onNavigateFolder(f.gid)}
-                  className="grid w-full grid-cols-[1fr_120px] items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-secondary/60"
-                >
-                  <span className="flex min-w-0 items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
-                      <Folder className="size-4" />
-                    </span>
-                    <span className="truncate text-base font-medium">{f.name}</span>
-                  </span>
-                  <span className="font-mono text-sm text-muted-foreground/70">folder</span>
-                </button>
-              ))}
-              {files.map((f) => {
-                const p = volumeProvider(f.volumeId);
-                return (
-                  <button
-                    key={f.gid}
-                    type="button"
-                    onClick={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
-                    className={cn(
-                      "grid w-full grid-cols-[1fr_120px] items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
-                      f.gid === selectedGid ? "bg-primary/10" : "hover:bg-secondary/60",
-                    )}
-                  >
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span className="relative grid size-9 shrink-0 place-items-center rounded-md bg-secondary font-mono text-xs font-bold text-muted-foreground">
-                        {ext(f.name) || <FileText className="size-4" />}
-                        <span
-                          className={cn(
-                            "absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-background",
-                            p.dot,
-                          )}
-                          title={p.label}
-                        />
-                      </span>
-                      <span className="truncate text-base font-medium">{f.name}</span>
-                    </span>
-                    <span className="font-mono text-sm tabular-nums text-muted-foreground">
-                      {formatBytes(f.size)}
-                    </span>
-                  </button>
-                );
-              })}
-            </>
+            <ListView
+              folders={folders}
+              files={files}
+              selectedGid={selectedGid}
+              onNavigateFolder={onNavigateFolder}
+              onSelectGid={onSelectGid}
+              providerOf={volumeProvider}
+            />
           )}
         </div>
 
@@ -335,6 +332,401 @@ export function FileCanvas({
         />
       )}
     </div>
+  );
+}
+
+// ── View toolbar control ──────────────────────────────────────────────────────
+
+const VIEW_OPTIONS = [
+  { id: "grid", label: "Grid", icon: LayoutGrid },
+  { id: "list", label: "List", icon: List },
+  { id: "tree", label: "Tree", icon: ListTree },
+] as const;
+
+function ViewControls({
+  fileView,
+  gridSize,
+  onFileView,
+  onGridSize,
+}: {
+  fileView: "grid" | "list" | "tree";
+  gridSize: "small" | "large";
+  onFileView: (v: "grid" | "list" | "tree") => void;
+  onGridSize: (s: "small" | "large") => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {fileView === "grid" && (
+        <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+          <SegBtn
+            active={gridSize === "small"}
+            title="Small icons"
+            onClick={() => onGridSize("small")}
+          >
+            <Grid3x3 className="size-4" />
+          </SegBtn>
+          <SegBtn
+            active={gridSize === "large"}
+            title="Large icons"
+            onClick={() => onGridSize("large")}
+          >
+            <Grid2x2 className="size-4" />
+          </SegBtn>
+        </div>
+      )}
+      <div className="flex items-center rounded-lg border border-border bg-card p-0.5">
+        {VIEW_OPTIONS.map((o) => (
+          <SegBtn
+            key={o.id}
+            active={fileView === o.id}
+            title={`${o.label} view`}
+            onClick={() => onFileView(o.id)}
+          >
+            <o.icon className="size-4" />
+          </SegBtn>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SegBtn({
+  active,
+  title,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-pressed={active}
+      onClick={onClick}
+      className={cn(
+        "grid size-7 place-items-center rounded-md transition-colors",
+        active
+          ? "bg-secondary text-foreground"
+          : "text-muted-foreground hover:bg-secondary/60 hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── List view ────────────────────────────────────────────────────────────────
+
+function ListView({
+  folders,
+  files,
+  selectedGid,
+  onNavigateFolder,
+  onSelectGid,
+  providerOf,
+}: {
+  folders: TreeEntry[];
+  files: TreeEntry[];
+  selectedGid: string | null;
+  onNavigateFolder: (gid: string) => void;
+  onSelectGid: (gid: string | null) => void;
+  providerOf: (volumeId: string | null) => ProviderMeta;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-[1fr_120px] gap-3 border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-[0.03em] text-muted-foreground/70">
+        <span>Name</span>
+        <span>Size</span>
+      </div>
+      {folders.map((f) => (
+        <button
+          key={f.gid}
+          type="button"
+          onClick={() => onNavigateFolder(f.gid)}
+          className="grid w-full grid-cols-[1fr_120px] items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-secondary/60"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-muted-foreground">
+              <Folder className="size-4" />
+            </span>
+            <span className="truncate text-base font-medium">{f.name}</span>
+          </span>
+          <span className="font-mono text-sm text-muted-foreground/70">folder</span>
+        </button>
+      ))}
+      {files.map((f) => {
+        const p = providerOf(f.volumeId);
+        return (
+          <button
+            key={f.gid}
+            type="button"
+            onClick={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
+            className={cn(
+              "grid w-full grid-cols-[1fr_120px] items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors",
+              f.gid === selectedGid ? "bg-primary/10" : "hover:bg-secondary/60",
+            )}
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="relative grid size-9 shrink-0 place-items-center rounded-md bg-secondary font-mono text-xs font-bold text-muted-foreground">
+                {ext(f.name) || <FileText className="size-4" />}
+                <span
+                  className={cn(
+                    "absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-background",
+                    p.dot,
+                  )}
+                  title={p.label}
+                />
+              </span>
+              <span className="truncate text-base font-medium">{f.name}</span>
+            </span>
+            <span className="font-mono text-sm tabular-nums text-muted-foreground">
+              {formatBytes(f.size)}
+            </span>
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+// ── Grid view (small / large icons, like Finder) ───────────────────────────────
+
+function GridView({
+  folders,
+  files,
+  gridSize,
+  selectedGid,
+  onNavigateFolder,
+  onSelectGid,
+  providerOf,
+}: {
+  folders: TreeEntry[];
+  files: TreeEntry[];
+  gridSize: "small" | "large";
+  selectedGid: string | null;
+  onNavigateFolder: (gid: string) => void;
+  onSelectGid: (gid: string | null) => void;
+  providerOf: (volumeId: string | null) => ProviderMeta;
+}) {
+  const large = gridSize === "large";
+  const cols = large
+    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+    : "grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8";
+  const tile = cn(
+    "group flex flex-col items-center gap-2 rounded-xl border border-transparent text-center transition-colors",
+    large ? "p-3" : "p-2",
+  );
+  const iconBox = large ? "size-16" : "size-11";
+  const glyph = large ? "size-7" : "size-5";
+
+  return (
+    <div className={cn("grid gap-1 p-1", cols)}>
+      {folders.map((f) => (
+        <button
+          key={f.gid}
+          type="button"
+          onClick={() => onNavigateFolder(f.gid)}
+          className={cn(tile, "hover:border-border hover:bg-secondary/50")}
+        >
+          <span
+            className={cn(
+              "grid shrink-0 place-items-center rounded-xl bg-secondary text-muted-foreground",
+              iconBox,
+            )}
+          >
+            <Folder className={glyph} />
+          </span>
+          <span className="line-clamp-2 w-full text-base font-medium break-words">{f.name}</span>
+        </button>
+      ))}
+      {files.map((f) => {
+        const p = providerOf(f.volumeId);
+        return (
+          <button
+            key={f.gid}
+            type="button"
+            onClick={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
+            className={cn(
+              tile,
+              f.gid === selectedGid
+                ? "border-primary/40 bg-primary/10"
+                : "hover:border-border hover:bg-secondary/50",
+            )}
+          >
+            <span
+              className={cn(
+                "relative grid shrink-0 place-items-center rounded-xl bg-secondary font-mono font-bold text-muted-foreground",
+                iconBox,
+                large ? "text-sm" : "text-xs",
+              )}
+            >
+              {ext(f.name) || <FileText className={glyph} />}
+              <span
+                className={cn(
+                  "absolute -top-1 -right-1 size-3 rounded-full ring-2 ring-background",
+                  p.dot,
+                )}
+                title={p.label}
+              />
+            </span>
+            <span className="line-clamp-2 w-full text-base font-medium break-words">{f.name}</span>
+            {f.size != null && (
+              <span className="font-mono text-sm tabular-nums text-muted-foreground/80">
+                {formatBytes(f.size)}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Tree view (lazy-expanding hierarchy) ───────────────────────────────────────
+
+const INDENT = 16;
+
+function FileTree({
+  parentGid,
+  depth,
+  selectedGid,
+  onSelectGid,
+  volumes,
+}: {
+  parentGid: string;
+  depth: number;
+  selectedGid: string | null;
+  onSelectGid: (gid: string | null) => void;
+  volumes: VolumeSummary[];
+}) {
+  const tree = useQuery({
+    queryKey: ["tree", parentGid],
+    queryFn: () => treeList({ data: { parentGid } }),
+  });
+
+  if (tree.isLoading) {
+    return (
+      <div className="px-3 py-1.5" style={{ paddingLeft: depth * INDENT + 12 }}>
+        <div className="h-6 w-40 animate-pulse rounded bg-secondary/50" />
+      </div>
+    );
+  }
+  const entries = tree.data ?? [];
+  const folders = entries.filter((e) => e.type === "folder");
+  const files = entries.filter((e) => e.type === "file");
+
+  return (
+    <>
+      {folders.map((f) => (
+        <TreeFolder
+          key={f.gid}
+          folder={f}
+          depth={depth}
+          selectedGid={selectedGid}
+          onSelectGid={onSelectGid}
+          volumes={volumes}
+        />
+      ))}
+      {files.map((f) => (
+        <TreeFileRow
+          key={f.gid}
+          file={f}
+          depth={depth}
+          provider={providerFor(volumes.find((v) => v.id === f.volumeId)?.provider)}
+          selected={f.gid === selectedGid}
+          onSelect={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
+        />
+      ))}
+    </>
+  );
+}
+
+function TreeFolder({
+  folder,
+  depth,
+  selectedGid,
+  onSelectGid,
+  volumes,
+}: {
+  folder: TreeEntry;
+  depth: number;
+  selectedGid: string | null;
+  onSelectGid: (gid: string | null) => void;
+  volumes: VolumeSummary[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{ paddingLeft: depth * INDENT + 12 }}
+        className="flex w-full items-center gap-2 rounded-lg py-1.5 pr-3 text-left transition-colors hover:bg-secondary/60"
+      >
+        <ChevronRight
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground/70 transition-transform",
+            open && "rotate-90",
+          )}
+        />
+        <Folder className="size-4 shrink-0 text-muted-foreground" />
+        <span className="truncate text-base font-medium">{folder.name}</span>
+      </button>
+      {open && (
+        <FileTree
+          parentGid={folder.gid}
+          depth={depth + 1}
+          selectedGid={selectedGid}
+          onSelectGid={onSelectGid}
+          volumes={volumes}
+        />
+      )}
+    </>
+  );
+}
+
+function TreeFileRow({
+  file,
+  depth,
+  provider,
+  selected,
+  onSelect,
+}: {
+  file: TreeEntry;
+  depth: number;
+  provider: ProviderMeta;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      style={{ paddingLeft: depth * INDENT + 12 + INDENT }}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-lg py-1.5 pr-3 text-left transition-colors",
+        selected ? "bg-primary/10" : "hover:bg-secondary/60",
+      )}
+    >
+      <span className="relative shrink-0">
+        <FileText className="size-4 text-muted-foreground" />
+        <span
+          className={cn(
+            "absolute -top-1 -right-1 size-2 rounded-full ring-1 ring-background",
+            provider.dot,
+          )}
+          title={provider.label}
+        />
+      </span>
+      <span className="min-w-0 flex-1 truncate text-base font-medium">{file.name}</span>
+      <span className="font-mono text-sm tabular-nums text-muted-foreground/80">
+        {formatBytes(file.size)}
+      </span>
+    </button>
   );
 }
 
