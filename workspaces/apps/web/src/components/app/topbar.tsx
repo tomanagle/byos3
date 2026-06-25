@@ -1,5 +1,5 @@
 import type { VolumeSummary } from "@byos3/services";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Boxes, LogOut } from "lucide-react";
 import type { Me } from "#/fn/auth";
 import { authClient } from "#/lib/auth-client";
@@ -19,14 +19,18 @@ export function Topbar({ me, active }: { me: Me; active: VolumeSummary | null })
 
   return (
     <header className="flex h-14 shrink-0 items-center gap-3.5 border-b border-border bg-card/70 px-4 backdrop-blur-md">
-      <div className="flex items-center gap-2.5 pr-1">
+      <Link
+        to="/"
+        aria-label="Go to all files"
+        className="flex items-center gap-2.5 rounded-lg pr-1 transition-opacity hover:opacity-80"
+      >
         <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[0_4px_14px_-4px] shadow-primary/50">
           <Boxes className="size-4" strokeWidth={2.4} />
         </span>
         <span className="font-display text-[15px] font-semibold tracking-tight">
           byos<span className="text-primary">3</span>
         </span>
-      </div>
+      </Link>
 
       {active && (
         <div className="hidden items-center gap-2 text-sm sm:flex">
