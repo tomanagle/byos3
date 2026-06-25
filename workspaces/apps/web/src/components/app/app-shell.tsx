@@ -31,10 +31,11 @@ export function useWorkspace(): Workspace {
   return ctx;
 }
 
-/** Map the current path to the rail's active section. */
+/** Map the current path to the rail's active section. A specific volume's files (/volumes/:id) is
+ * still "files" activity; only the bare /volumes manager highlights "Volumes". */
 function viewFor(pathname: string): View {
-  if (pathname.startsWith("/volumes")) return "volumes";
   if (pathname.startsWith("/keys")) return "keys";
+  if (pathname === "/volumes" || pathname === "/volumes/") return "volumes";
   return "files";
 }
 
@@ -56,7 +57,8 @@ export function AppShell({ me }: { me: Me }) {
   const active = volumes.find((v) => v.id === activeVolumeId) ?? null;
   const view = viewFor(location.pathname);
 
-  const openVolume = (id: string) => void navigate({ to: "/$volumeId", params: { volumeId: id } });
+  const openVolume = (id: string) =>
+    void navigate({ to: "/volumes/$volumeId", params: { volumeId: id } });
   const onView = (v: View) =>
     void navigate({ to: v === "files" ? "/" : v === "volumes" ? "/volumes" : "/keys" });
 

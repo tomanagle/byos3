@@ -9,15 +9,18 @@ session is resolved once at the root and every route branches on it.
 | Path | File | Auth | Renders |
 |---|---|---|---|
 | `/` | `routes/_app.index.tsx` | public | logged in → files workspace; logged out → landing page |
-| `/:id` | `routes/_app.$volumeId.tsx` | protected | files workspace with volume `:id` as the active upload target |
-| `/volumes` | `routes/_app.volumes.tsx` | protected | connected-buckets manager |
+| `/volumes` | `routes/_app.volumes.index.tsx` | protected | connected-buckets manager |
+| `/volumes/:id` | `routes/_app.volumes.$volumeId.tsx` | protected | files workspace with volume `:id` as the active upload target |
 | `/keys` | `routes/_app.keys.tsx` | protected | API-key minting |
 | `/sign-in`, `/sign-up` | `routes/sign-in.tsx`, `sign-up.tsx` | public | Better Auth forms (own `AuthShell`, not the workspace shell) |
 | `/api/auth/$`, `/api/ns/socket` | `routes/api/**` | n/a | server routes (Better Auth handler, namespace WebSocket) |
 
-`:id` is a volume id (`vol_…`); static routes (`/volumes`, `/keys`, `/sign-in`) win over the dynamic
-`/$volumeId`, so they never collide. There is **no `/app`** — the old query-driven
-`/app?v=&view=&folder=&sel=` route was replaced by these paths.
+`/volumes` and `/volumes/:id` share a passthrough layout (`routes/_app.volumes.tsx`) that guards the
+whole subtree and renders into the shell outlet; the bare `/volumes` is its index, `/volumes/:id`
+its dynamic child (a volume id, `vol_…`). There is **no `/app`** - the old query-driven
+`/app?v=&view=&folder=&sel=` route was replaced by these paths. In the rail, only the bare
+`/volumes` highlights "Volumes"; `/volumes/:id` is file-browsing so it highlights "All files" and
+the specific volume in the mounted list.
 
 ## Auth resolved once, at the root
 
