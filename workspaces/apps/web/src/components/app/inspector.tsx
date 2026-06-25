@@ -1,7 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
-import { Download, Loader2, X } from "lucide-react";
+import { Download, FileCode2, Loader2, X } from "lucide-react";
 import type { ReactNode } from "react";
 import { downloadUrl } from "#/fn/volumes";
+import { isViewableText } from "#/lib/file-types";
 import type { ProviderMeta } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
@@ -11,19 +12,25 @@ export interface FileEntry {
   volumeId: string | null;
   sha256: string | null;
   size: number | null;
+  /** the node's current version, used as the base for an edit (addVersion) */
+  currentVersionId?: string | null;
 }
 
 export function Inspector({
   entry,
   volumeLabel,
   provider,
+  onOpen,
   onClose,
 }: {
   entry: FileEntry;
   volumeLabel: string;
   provider: ProviderMeta;
+  /** open the in-app code viewer/editor (only offered for viewable text files) */
+  onOpen?: () => void;
   onClose: () => void;
 }) {
+  const canView = Boolean(onOpen && isViewableText(entry.name, entry.size));
   const dl = useMutation({
     mutationFn: () => {
       if (!entry.volumeId || !entry.sha256) throw new Error("no content");
@@ -50,12 +57,26 @@ export function Inspector({
         </button>
       </div>
 
-      <div className="px-4">
+      <div className="flex flex-col gap-2 px-4">
+        {canView && (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-all hover:brightness-110"
+          >
+            <FileCode2 className="size-4" strokeWidth={2.2} /> View &amp; edit
+          </button>
+        )}
         <button
           type="button"
           onClick={() => dl.mutate()}
           disabled={dl.isPending}
-          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-semibold text-primary-foreground transition-all hover:brightness-110 disabled:opacity-60"
+          className={cn(
+            "inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-all disabled:opacity-60",
+            canView
+              ? "border border-border bg-secondary hover:bg-accent"
+              : "bg-primary text-primary-foreground hover:brightness-110",
+          )}
         >
           {dl.isPending ? (
             <Loader2 className="size-4 animate-spin" />

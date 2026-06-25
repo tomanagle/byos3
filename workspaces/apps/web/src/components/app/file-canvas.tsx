@@ -18,10 +18,12 @@ import {
 import { type DragEvent, useRef, useState } from "react";
 import type { TreeEntry } from "#/fn/tree";
 import { treeAncestors, treeCommit, treeList } from "#/fn/tree";
+import { isViewableText } from "#/lib/file-types";
 import { useFileView } from "#/lib/use-file-view";
 import { type ProviderMeta, providerFor } from "#/lib/providers";
 import { cn } from "#/lib/utils";
-import { Inspector } from "./inspector";
+import { FileViewer } from "./file-viewer";
+import { Inspector, type FileEntry } from "./inspector";
 import { useTransfers } from "./transfers";
 
 function formatBytes(n: number | null): string {
@@ -134,6 +136,7 @@ export function FileCanvas({
   const [folderName, setFolderName] = useState("");
   const { upload } = useTransfers();
   const { fileView, gridSize, setFileView, setGridSize } = useFileView();
+  const [viewing, setViewing] = useState<FileEntry | null>(null);
 
   const dropVolume = volumes.find((v) => v.id === dropVolumeId) ?? volumes[0];
   const volumeProvider = (volumeId: string | null) =>
@@ -176,6 +179,22 @@ export function FileCanvas({
   // no-op of dropping onto the current parent.
   const onMove = (gid: string, newParentGid: string) => {
     if (gid !== newParentGid) moveNode.mutate({ gid, newParentGid });
+  };
+  // Open a file in the in-app viewer/editor (double-click). Non-viewable types just get selected so
+  // the inspector can offer a download.
+  const openFile = (f: TreeEntry) => {
+    if (isViewableText(f.name, f.size)) {
+      setViewing({
+        gid: f.gid,
+        name: f.name,
+        volumeId: f.volumeId,
+        sha256: f.sha256,
+        size: f.size,
+        currentVersionId: f.currentVersionId,
+      });
+    } else {
+      onSelectGid(f.gid);
+    }
   };
 
   const entries = tree.data ?? [];
@@ -359,6 +378,7 @@ export function FileCanvas({
               selectedGid={selectedGid}
               onNavigateFolder={onNavigateFolder}
               onSelectGid={onSelectGid}
+              onOpenFile={openFile}
               onMove={onMove}
               providerOf={volumeProvider}
             />
@@ -378,6 +398,7 @@ export function FileCanvas({
               selectedGid={selectedGid}
               onNavigateFolder={onNavigateFolder}
               onSelectGid={onSelectGid}
+              onOpenFile={openFile}
               onMove={onMove}
               providerOf={volumeProvider}
             />
@@ -406,10 +427,29 @@ export function FileCanvas({
             volumeId: selected.volumeId,
             sha256: selected.sha256,
             size: selected.size,
+            currentVersionId: selected.currentVersionId,
           }}
           volumeLabel={volumes.find((v) => v.id === selected.volumeId)?.label ?? "volume"}
           provider={volumeProvider(selected.volumeId)}
+          onOpen={() =>
+            setViewing({
+              gid: selected.gid,
+              name: selected.name,
+              volumeId: selected.volumeId,
+              sha256: selected.sha256,
+              size: selected.size,
+              currentVersionId: selected.currentVersionId,
+            })
+          }
           onClose={() => onSelectGid(null)}
+        />
+      )}
+
+      {viewing && (
+        <FileViewer
+          file={viewing}
+          volumeLabel={volumes.find((v) => v.id === viewing.volumeId)?.label ?? "volume"}
+          onClose={() => setViewing(null)}
         />
       )}
     </div>
@@ -550,6 +590,7 @@ function ListView({
   selectedGid,
   onNavigateFolder,
   onSelectGid,
+  onOpenFile,
   onMove,
   providerOf,
 }: {
@@ -558,6 +599,7 @@ function ListView({
   selectedGid: string | null;
   onNavigateFolder: (gid: string) => void;
   onSelectGid: (gid: string | null) => void;
+  onOpenFile: (f: TreeEntry) => void;
   onMove: (gid: string, newParentGid: string) => void;
   providerOf: (volumeId: string | null) => ProviderMeta;
 }) {
@@ -596,6 +638,7 @@ function ListView({
               type="button"
               {...draggable(f.gid)}
               onClick={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
+              onDoubleClick={() => onOpenFile(f)}
               className={cn(
                 row,
                 "transition-colors",
@@ -635,6 +678,7 @@ function GridView({
   selectedGid,
   onNavigateFolder,
   onSelectGid,
+  onOpenFile,
   onMove,
   providerOf,
 }: {
@@ -644,6 +688,7 @@ function GridView({
   selectedGid: string | null;
   onNavigateFolder: (gid: string) => void;
   onSelectGid: (gid: string | null) => void;
+  onOpenFile: (f: TreeEntry) => void;
   onMove: (gid: string, newParentGid: string) => void;
   providerOf: (volumeId: string | null) => ProviderMeta;
 }) {
@@ -688,6 +733,7 @@ function GridView({
             type="button"
             {...draggable(f.gid)}
             onClick={() => onSelectGid(f.gid === selectedGid ? null : f.gid)}
+            onDoubleClick={() => onOpenFile(f)}
             className={cn(
               tile,
               f.gid === selectedGid
