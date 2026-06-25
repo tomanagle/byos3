@@ -9,7 +9,7 @@ import { authMiddleware } from "#/lib/middleware";
 
 export const listObjects = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeListObjectsInput)
+  .validator(VolumeListObjectsInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "listObjects", "volume.id": data.volumeId });
     return listObjectsSvc(context.ctx, data);
@@ -17,7 +17,7 @@ export const listObjects = createServerFn({ method: "POST" })
 
 export const putObjectIntent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeObjectKeyInput)
+  .validator(VolumeObjectKeyInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "putObjectIntent", "volume.id": data.volumeId });
     return putObjectIntentSvc(context.ctx, data);
@@ -25,7 +25,7 @@ export const putObjectIntent = createServerFn({ method: "POST" })
 
 export const objectUrl = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeObjectKeyInput)
+  .validator(VolumeObjectKeyInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "objectUrl", "volume.id": data.volumeId });
     return objectUrlSvc(context.ctx, data);

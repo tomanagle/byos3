@@ -19,7 +19,7 @@ export const listVolumes = createServerFn({ method: "GET" })
 
 export const uploadIntent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeUploadInput)
+  .validator(VolumeUploadInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "uploadIntent", "volume.id": data.volumeId });
     return uploadIntentSvc(context.ctx, data);
@@ -27,7 +27,7 @@ export const uploadIntent = createServerFn({ method: "POST" })
 
 export const downloadUrl = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeDownloadInput)
+  .validator(VolumeDownloadInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "downloadUrl", "volume.id": data.volumeId });
     return downloadUrlSvc(context.ctx, data);

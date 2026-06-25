@@ -10,7 +10,7 @@ import { verifyTurnstile } from "#/lib/turnstile";
 // The web's own data path is server functions, not HTTP /api routes - the only HTTP route is the
 // Better Auth handler at /api/auth/*. See agents/docs/web-app.md, api.md.
 export const joinWaitlist = createServerFn({ method: "POST" })
-  .inputValidator(WaitlistJoinInput)
+  .validator(WaitlistJoinInput)
   .handler(async ({ data }): Promise<WaitlistJoinResult> => {
     const human = await verifyTurnstile(
       (env as { TURNSTILE_SECRET_KEY?: string }).TURNSTILE_SECRET_KEY,

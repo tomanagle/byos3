@@ -10,7 +10,7 @@ import { authMiddleware } from "#/lib/middleware";
  */
 export const setupCors = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(CorsSetupInput)
+  .validator(CorsSetupInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "setupCors", "volume.id": data.volumeId });
     const result = await setupCorsSvc(context.ctx, data);

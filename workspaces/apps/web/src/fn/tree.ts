@@ -33,7 +33,7 @@ function requireNamespace(namespaceId: string | null): string {
 
 export const treeList = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(TreeListInput)
+  .validator(TreeListInput)
   .handler(async ({ context, data }): Promise<TreeEntry[]> => {
     const nsId = requireNamespace(context.namespaceId);
     context.span.set({ fn: "treeList", "tree.parent_gid": data.parentGid });
@@ -45,7 +45,7 @@ export const treeList = createServerFn({ method: "POST" })
 
 export const treeAncestors = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(TreeAncestorsInput)
+  .validator(TreeAncestorsInput)
   .handler(async ({ context, data }): Promise<Array<{ gid: string; name: string }>> => {
     const nsId = requireNamespace(context.namespaceId);
     context.span.set({ fn: "treeAncestors", "tree.gid": data.gid });
@@ -57,7 +57,7 @@ export const treeAncestors = createServerFn({ method: "POST" })
 
 export const treeCommit = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(JournalOp)
+  .validator(JournalOp)
   .handler(async ({ context, data }): Promise<{ head: number }> => {
     const nsId = requireNamespace(context.namespaceId);
     // createFolder/createFile/addVersion mutate content; the rest are structural - all need write.
@@ -70,7 +70,7 @@ export const treeCommit = createServerFn({ method: "POST" })
 
 export const treeCommitIntent = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(CommitIntentInput)
+  .validator(CommitIntentInput)
   .handler(async ({ context, data }): Promise<{ missing: string[] }> => {
     const nsId = requireNamespace(context.namespaceId);
     context.span.set({

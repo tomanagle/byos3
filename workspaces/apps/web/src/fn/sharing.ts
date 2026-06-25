@@ -9,7 +9,7 @@ import { authMiddleware } from "#/lib/middleware";
 
 export const shareVolume = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeShareInput)
+  .validator(VolumeShareInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "shareVolume", "volume.id": data.volumeId, role: data.role });
     return shareVolumeSvc(context.ctx, data);
@@ -17,7 +17,7 @@ export const shareVolume = createServerFn({ method: "POST" })
 
 export const listVolumeMembers = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeMembersInput)
+  .validator(VolumeMembersInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "listVolumeMembers", "volume.id": data.volumeId });
     return listMembersSvc(context.ctx, data);
@@ -25,7 +25,7 @@ export const listVolumeMembers = createServerFn({ method: "POST" })
 
 export const unshareVolume = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(VolumeUnshareInput)
+  .validator(VolumeUnshareInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "unshareVolume", "volume.id": data.volumeId });
     await unshareVolumeSvc(context.ctx, data);

@@ -5,7 +5,7 @@ import { authMiddleware } from "#/lib/middleware";
 
 export const connectBucket = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(ConnectBucketInput)
+  .validator(ConnectBucketInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "connectBucket", provider: data.provider });
     const result = await connectBucketSvc(context.ctx, data);

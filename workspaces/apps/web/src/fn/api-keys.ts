@@ -10,7 +10,7 @@ import { auth } from "#/server/auth";
  */
 export const createApiKey = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .inputValidator(ApiKeyCreateInput)
+  .validator(ApiKeyCreateInput)
   .handler(async ({ context, data }) => {
     context.span.set({ fn: "createApiKey" });
     const key = await auth.api.createApiKey({
