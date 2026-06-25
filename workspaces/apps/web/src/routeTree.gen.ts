@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
-import { Route as AppRouteImport } from './routes/app'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as AppIndexRouteImport } from './routes/_app.index'
+import { Route as AppVolumesRouteImport } from './routes/_app.volumes'
+import { Route as AppKeysRouteImport } from './routes/_app.keys'
+import { Route as AppVolumeIdRouteImport } from './routes/_app.$volumeId'
 import { Route as ApiNsSocketRouteImport } from './routes/api/ns/socket'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
@@ -27,14 +30,28 @@ const SignInRoute = SignInRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
-  id: '/app',
-  path: '/app',
+  id: '/_app',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVolumesRoute = AppVolumesRouteImport.update({
+  id: '/volumes',
+  path: '/volumes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppKeysRoute = AppKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppVolumeIdRoute = AppVolumeIdRouteImport.update({
+  id: '/$volumeId',
+  path: '/$volumeId',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiNsSocketRoute = ApiNsSocketRouteImport.update({
   id: '/api/ns/socket',
@@ -48,27 +65,34 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/': typeof AppIndexRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/$volumeId': typeof AppVolumeIdRoute
+  '/keys': typeof AppKeysRoute
+  '/volumes': typeof AppVolumesRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ns/socket': typeof ApiNsSocketRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/app': typeof AppRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/$volumeId': typeof AppVolumeIdRoute
+  '/keys': typeof AppKeysRoute
+  '/volumes': typeof AppVolumesRoute
+  '/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ns/socket': typeof ApiNsSocketRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/_app': typeof AppRouteWithChildren
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/_app/$volumeId': typeof AppVolumeIdRoute
+  '/_app/keys': typeof AppKeysRoute
+  '/_app/volumes': typeof AppVolumesRoute
+  '/_app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/ns/socket': typeof ApiNsSocketRoute
 }
@@ -76,26 +100,38 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/app'
     | '/sign-in'
     | '/sign-up'
+    | '/$volumeId'
+    | '/keys'
+    | '/volumes'
     | '/api/auth/$'
     | '/api/ns/socket'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/sign-in' | '/sign-up' | '/api/auth/$' | '/api/ns/socket'
-  id:
-    | '__root__'
-    | '/'
-    | '/app'
+  to:
     | '/sign-in'
     | '/sign-up'
+    | '/$volumeId'
+    | '/keys'
+    | '/volumes'
+    | '/'
+    | '/api/auth/$'
+    | '/api/ns/socket'
+  id:
+    | '__root__'
+    | '/_app'
+    | '/sign-in'
+    | '/sign-up'
+    | '/_app/$volumeId'
+    | '/_app/keys'
+    | '/_app/volumes'
+    | '/_app/'
     | '/api/auth/$'
     | '/api/ns/socket'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -118,19 +154,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SignInRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app': {
-      id: '/app'
-      path: '/app'
-      fullPath: '/app'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
+    '/_app/': {
+      id: '/_app/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/volumes': {
+      id: '/_app/volumes'
+      path: '/volumes'
+      fullPath: '/volumes'
+      preLoaderRoute: typeof AppVolumesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/keys': {
+      id: '/_app/keys'
+      path: '/keys'
+      fullPath: '/keys'
+      preLoaderRoute: typeof AppKeysRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$volumeId': {
+      id: '/_app/$volumeId'
+      path: '/$volumeId'
+      fullPath: '/$volumeId'
+      preLoaderRoute: typeof AppVolumeIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/ns/socket': {
       id: '/api/ns/socket'
@@ -149,9 +206,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AppRouteChildren {
+  AppVolumeIdRoute: typeof AppVolumeIdRoute
+  AppKeysRoute: typeof AppKeysRoute
+  AppVolumesRoute: typeof AppVolumesRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppVolumeIdRoute: AppVolumeIdRoute,
+  AppKeysRoute: AppKeysRoute,
+  AppVolumesRoute: AppVolumesRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
+  AppRoute: AppRouteWithChildren,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

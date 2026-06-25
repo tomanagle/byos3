@@ -47,6 +47,8 @@ See [`AGENTS.md`](../../AGENTS.md) for the golden rules and the task→doc map.
   authentication, API key management & scopes (∩ RBAC), OpenAPI, and web/API parity.
 - **[web-app.md](./web-app.md)** — TanStack Start structure, shadcn/ui, server functions vs HTTP
   routes, client-side hashing/upload.
+- **[routing.md](./routing.md)** — the path-based route table, session resolution at the root, the
+  `SHOW_WAITING_SCREEN` waitlist gate, the persistent `_app` shell layout, and deep-linkable search.
 - **[ai-rag.md](./ai-rag.md)** — (later) RAG across docs with Workers AI + Vectorize; the
   indexer seam and its one sanctioned exception to the no-bytes rule.
 - **[logging.md](./logging.md)** — wide events / canonical log lines: one structured event per

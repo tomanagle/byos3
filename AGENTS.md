@@ -76,6 +76,7 @@ agents/
 | Roles, permissions, authorization (RBAC) | `agents/docs/rbac.md` |
 | API surface, API keys, OpenAPI (API-first) | `agents/docs/api.md` |
 | Web UI, TanStack Start, shadcn | `agents/docs/web-app.md` |
+| Routes, auth flow, waitlist gate, shell layout | `agents/docs/routing.md` |
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability | `agents/docs/logging.md` |
 | Secrets (SOPS/age), .dev.vars, prod deploy | `agents/docs/secrets.md` |

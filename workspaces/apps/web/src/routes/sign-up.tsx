@@ -27,7 +27,7 @@ function SignUp() {
       setError(res.error.message ?? "Couldn't create your account.");
       return;
     }
-    await navigate({ to: "/app" });
+    await navigate({ to: "/" });
   }
 
   return (

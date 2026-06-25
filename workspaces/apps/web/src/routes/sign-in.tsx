@@ -26,7 +26,7 @@ function SignIn() {
       setError(res.error.message ?? "Couldn't sign in. Check your email and password.");
       return;
     }
-    await navigate({ to: "/app" });
+    await navigate({ to: "/" });
   }
 
   return (

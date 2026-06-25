@@ -31,6 +31,7 @@ written; `agents/plans/` holds the phased roadmap. Read the relevant doc **befor
 | Roles, permissions, authorization (RBAC) | `agents/docs/rbac.md` |
 | API surface, API keys, OpenAPI (API-first) | `agents/docs/api.md` |
 | Web UI (TanStack Start + shadcn/ui) | `agents/docs/web-app.md` |
+| Routes, auth flow, waitlist gate, shell layout | `agents/docs/routing.md` |
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability (wide events) | `agents/docs/logging.md` |
 | Secrets management (SOPS/age) | `agents/docs/secrets.md` |

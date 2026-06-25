@@ -1,14 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState, type FormEvent } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useMutation } from "@tanstack/react-query";
 import { ArrowRight, Check, Database, KeyRound, Plug } from "lucide-react";
+import { type FormEvent, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { joinWaitlist } from "#/fn/waitlist";
-
-export const Route = createFileRoute("/")({ component: Home });
 
 // Cloudflare Turnstile PUBLIC test site key (always passes). Phase 1 will provide the real key
 // via a server loader reading env.TURNSTILE_SITE_KEY.
@@ -20,7 +17,11 @@ const SPECS = [
   { icon: Plug, label: "Open, versioned API" },
 ];
 
-function Home() {
+/**
+ * Pre-launch waitlist takeover. Rendered for every route when `SHOW_WAITING_SCREEN` is true
+ * (see routes/__root.tsx). Captures interest before the product is open.
+ */
+export function WaitingScreen() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [token, setToken] = useState("");
@@ -54,7 +55,6 @@ function Home() {
 
   return (
     <main className="relative min-h-screen overflow-hidden">
-      {/* top hairline status bar */}
       <div className="flex items-center justify-between border-b border-border/70 px-6 py-4 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase">
         <span className="font-semibold text-foreground">byos3</span>
         <span className="hidden items-center gap-2 sm:inline-flex">
@@ -64,7 +64,6 @@ function Home() {
       </div>
 
       <div className="mx-auto grid max-w-6xl gap-14 px-6 py-16 lg:grid-cols-[1.1fr_0.9fr] lg:gap-20 lg:py-28">
-        {/* ── Pitch ── */}
         <section className="flex flex-col justify-center">
           <span
             className="byos3-rise inline-flex w-fit items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 font-mono text-[0.7rem] tracking-wide text-muted-foreground uppercase"
@@ -90,7 +89,7 @@ function Home() {
             style={{ animationDelay: "200ms" }}
           >
             A Dropbox-style sync app that keeps every byte in storage{" "}
-            <span className="text-foreground">you</span> own - AWS S3, Cloudflare R2, or Backblaze.
+            <span className="text-foreground">you</span> own: AWS S3, Cloudflare R2, or Backblaze.
             We run the sync, sharing and API. You pay for the service, never per-gigabyte rent.
           </p>
 
@@ -106,7 +105,6 @@ function Home() {
           </ul>
         </section>
 
-        {/* ── Waitlist card ── */}
         <section className="flex items-center">
           <div
             className="byos3-rise w-full rounded-2xl border border-border bg-card/70 p-7 shadow-2xl shadow-black/40 backdrop-blur-sm sm:p-9"
@@ -121,7 +119,7 @@ function Home() {
                   {alreadyJoined ? "Already on the list" : "You're on the list"}
                 </h2>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Thanks for your interest - we'll email{" "}
+                  Thanks for your interest. We'll email{" "}
                   <span className="font-mono text-foreground">{email}</span> the moment byos3 is
                   ready.
                 </p>
@@ -149,7 +147,7 @@ function Home() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="name">Name - optional</Label>
+                  <Label htmlFor="name">Name (optional)</Label>
                   <Input
                     id="name"
                     type="text"

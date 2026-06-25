@@ -221,7 +221,7 @@ export function ConnectDialog({
                 </Field>
               </div>
               <div className="col-span-2">
-                <Field label="Prefix" hint="optional - scope this volume to a path">
+                <Field label="Prefix" hint="scope this volume to a path">
                   <Input
                     className="font-mono text-[13px]"
                     value={form.prefix}

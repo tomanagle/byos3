@@ -66,14 +66,15 @@ The browser does the heavy lifting so bytes never hit the Worker:
 
 ## Navigation state lives in the URL (deep-linkable)
 
-The workspace is **fully addressable**: the active volume, the path within it, the current screen,
-and the selected file are **URL search params** (`/app?v=<volumeId>&path=<prefix>&view=<files|volumes|keys>&sel=<key>`),
-validated in the `/app` route's `validateSearch`. The shell reads them via `getRouteApi("/app").useSearch()`
-and mutates them with `useNavigate({ search })` — never `useState` for navigation. So copying the
-address bar and pasting it in another tab lands on the **same volume + path + selection with no extra
-clicks**, and the state survives refresh, back/forward, and SSR (verified: `?view=keys` server-renders
-the keys screen). Folder navigation and the breadcrumb just push a new `path`; switching volumes resets
-`path`/`sel`. UI-only state (e.g. whether the connect dialog is open) stays in `useState`.
+The workspace is **fully addressable** and **path-based** (full route table + auth flow in
+[`routing.md`](./routing.md)): the screen is the path (`/` files, `/:id` a volume's files,
+`/volumes`, `/keys`) and the folder + selected file are search params (`?folder=<gid>&sel=<gid>`) on
+the files routes. Screens read params/search with the router hooks and mutate them with
+`useNavigate` (never `useState` for navigation), so copying the address bar and pasting it in another
+tab lands on the **same screen + folder + selection with no extra clicks**, surviving refresh,
+back/forward, and SSR. The persistent shell (`_app` layout) is mounted once so the WebSocket and
+in-flight transfer toasts outlive screen changes. UI-only state (e.g. whether the connect dialog is
+open) stays in `useState`.
 
 ## Data fetching
 
