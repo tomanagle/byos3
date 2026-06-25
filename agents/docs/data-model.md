@@ -36,11 +36,14 @@ organization id. (Personal namespace = a personal org with a single `owner` memb
 (mountable at different paths per member). The cross-user sharing primitive — see
 `namespaces-and-acl.md` and `foundational-considerations.md` §2.
 
-### `apikey` (Better Auth `apiKey` plugin)
-`id`, hashed `key`, non-secret `prefix`, `name`, `userId`, `enabled`, `expiresAt`,
+### `apikey` (Better Auth `apiKey` plugin — the separate `@better-auth/api-key` package in BA ≥1.6)
+`id`, hashed `key`, non-secret `prefix`/`start`, `name`, **`referenceId`** (the owning user — the
+plugin generalized `userId` → `referenceId`), `configId`, `enabled`, `expiresAt`,
 `remaining`/`refillAmount`/`refillInterval`, `rateLimit*`, **`permissions`** (scopes — same
 `resource:[actions]` vocab as RBAC), `metadata` (e.g. namespace restriction), timestamps.
-Programmatic auth; effective permission = key scopes ∩ the owner's role. See `api.md`.
+Programmatic auth; effective permission = key scopes ∩ the owner's role. Scoped-key creation is a
+**server-only** operation (`auth.api.createApiKey` with an explicit `userId`, no forwarded headers);
+the API Worker verifies an `x-api-key` with `auth.api.verifyApiKey`. See `api.md`, `auth.md`.
 
 ### `waitlist` (Phase 0 — pre-launch)
 `id`, `email` (normalized lowercase, **unique**), `name` (optional), `referrer`/`source` (optional),
@@ -48,7 +51,14 @@ Programmatic auth; effective permission = key scopes ∩ the owner's role. See `
 the product exists. See `plans/phase-0-landing-waitlist.md`.
 
 ### `connector`
-An encrypted provider credential. Account-scoped; a user may have many.
+An encrypted provider credential. `ownerUserId` is a **FK to `user`** (`onDelete: cascade`). A user
+may have many; the owner is seeded as a `full` member (below).
+
+### `connector_member` / `volume_member` (resource-level sharing — ours)
+`(id, connectorId|volumeId, userId, role, createdAt)`, unique on `(resourceId, userId)`, FKs to the
+resource + `user` (cascade). `role` ∈ `full | read_write | read_only`. **Access to a connector/volume
+is governed by these rows, not namespace membership** (`rbac.md` — Resource-level sharing). The owner
+is a `full` member; sharing adds rows.
 `id (conn_…)`, `ownerUserId`, `provider` (MVP/Tier-1: `s3` | `r2` | `b2`; `s3` = any SigV4-family
 provider — the full set & per-provider behavior is **data** in `storage-providers.md`), `endpoint`,
 `region` (`auto` for R2), `accessKeyId`, `secretCipher` (envelope-encrypted by `packages/crypto`

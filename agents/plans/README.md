@@ -9,7 +9,7 @@ Keep the **status** column current as work lands.
 
 | Phase | File | Goal | Status |
 |---|---|---|---|
-| 0 | [phase-0-landing-waitlist.md](./phase-0-landing-waitlist.md) | Public landing page + email waitlist in D1; proves the TanStack Start → Workers → D1 → deploy pipeline | Not started |
+| 0 | [phase-0-landing-waitlist.md](./phase-0-landing-waitlist.md) | Public landing page + email waitlist in D1; proves the TanStack Start → Workers → D1 → deploy pipeline | **In progress** · built & verified locally (CI/CD + Pulumi wired; needs real CF account to deploy) |
 | 1 | [phase-1-foundation.md](./phase-1-foundation.md) | Prove BYO + direct-transfer: auth, connect-a-bucket, presigned upload/download, whole-file storage, flat list | Not started |
 | 2 | [phase-2-drive-and-sync.md](./phase-2-drive-and-sync.md) | A real drive: folder tree, DO journal, versioning, cursor sync, WebSocket notifications | Not started |
 | 2.5 | [billing-subscriptions.md](./billing-subscriptions.md) | Paid plans gate usage (Better Auth Stripe), entitlements enforced | Not started |

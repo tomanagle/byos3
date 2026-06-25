@@ -72,11 +72,29 @@ Client reads the node's current `blocklist` from the DO → for each chunk it la
 fetches via **presigned GET** from the node's volume → reassembles in order. Delta download falls
 out naturally once chunking is on (only missing chunks transfer).
 
-## Change notification
+## Change notification & live UI
 
-The DO maintains **hibernating WebSockets** for connected devices. On commit it sends a
-lightweight **poke** ("namespace changed, head is now seq N"); clients then pull deltas via cursor.
-The socket never carries file content. Hibernation means idle devices cost nothing.
+The Namespace DO maintains **hibernating WebSockets** for connected clients (browser tabs + the
+desktop daemon). It carries two kinds of messages — **never file content**:
+
+- **Durable poke (journaled).** On a successful `commit` the DO appends the op and sends every
+  connected socket a lightweight poke ("head is now seq N"); clients pull deltas via cursor
+  (`seq > myCursor`) and apply them. This is what makes *"upload a file in one window → it appears
+  in every window and device"* work — the committed op propagates to all cursors.
+- **Ephemeral transfer events (NOT journaled).** Transfer progress is transient presence, not state,
+  so it is broadcast but never written to the journal. On `commit-intent` the DO broadcasts
+  `transfer.start {gid, name, volumeId, by}`; the uploading client relays throttled
+  `transfer.progress {gid, pct}` over its own socket and the DO re-broadcasts it; `commit` ends it
+  with the durable poke. Other windows render the file as *uploading… N%* immediately, then
+  materialize it for real on the poke. Progress is best-effort and self-expiring (a stale transfer
+  times out client-side).
+
+**Connection + authorization.** The browser opens `wss://…/ns/{namespaceId}/socket`; the **Worker**
+authenticates (session or API key) and confirms namespace membership BEFORE upgrading, then forwards
+the `Upgrade` to `env.NAMESPACE.get(idFromName(namespaceId))`. (apps/web binds the DO directly;
+apps/api reaches it via a service binding to apps/web.) The DO tags each socket with its principal
+so it can scope which subtree events a reader is allowed to see. Hibernation means idle tabs cost
+nothing — ephemeral traffic only flows during active transfers.
 
 ## Conflict resolution
 

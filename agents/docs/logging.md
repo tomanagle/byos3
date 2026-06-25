@@ -12,49 +12,56 @@ the request and emitted once at the end.
 
 ## The package: `@byos3/logging`
 
-A tiny, dependency-light logger. Core type is a **`WideEvent`**: a mutable bag of fields you
-enrich through the request, emitted exactly once as one JSON line.
+A tiny, dependency-light logger modelled as **spans**. The **root `Span` IS the canonical wide
+event**: a mutable bag of fields you enrich through the request, emitted exactly once as one JSON
+line at `end()`. A child `span(name)` times a sub-operation — its fields fold into the *same* event
+under a `<name>.` prefix and it stamps `<name>.duration_ms` — so you still get one event per
+request, now with nested timings. Children never emit their own line.
 
 ```ts
-import { createWideEvent } from "@byos3/logging";
+import { createServiceLogger } from "@byos3/logging";
 
-const event = createWideEvent({
-  service: "web",                 // which hop: "web" | "namespace-do" | "gc-workflow" | "indexer"
-  method, path, requestId, traceId,
-  // environment context is attached automatically (see below)
-});
+const { createSpan } = createServiceLogger({ service: "web" }); // hop: web | byos3-api | namespace-do | …
+
+const span = createSpan({ "web.request_id": requestId, "web.path": path });
 
 try {
-  // ...handlers enrich the SAME event...
-  event.set({ outcome: "success", status_code: 200 });
+  const presign = span.span("presign", { provider });  // child timing
+  // ...do the work...
+  presign.end();                                        // stamps presign.duration_ms
+
+  // ...handlers enrich the SAME root span via span.set(...)...
+  span.set({ outcome: "success", status_code: 200 });
   return res;
 } catch (err) {
-  event.error(err);               // sets outcome:"error", error.{type,code,message,retriable}
+  span.setError(err);             // sets error.message + error.type
+  span.set({ outcome: "error", status_code: 500 });
   throw err;
 } finally {
-  event.emit();                   // ONE JSON line, with duration_ms
+  span.end();                     // ONE JSON line, with duration_ms
 }
 ```
 
 API surface (keep it this small):
-- `createWideEvent(seed)` — start an event; auto-attaches environment context.
-- `event.set(fields)` — merge high-dimensionality fields (idempotent, last-write-wins).
-- `event.timed(name, fn)` — run `fn`, record `<name>_ms`. Use for phases (`presign_ms`, `do_ms`,
-  `bucket_ms`).
-- `event.child(seed)` — derive a correlated event for a downstream hop (carries `traceId`).
-- `event.error(err)` — record a typed error (never the stack as a string blob; structured fields).
-- `event.emit()` — flush once, as JSON, to `console.log` (Cloudflare ingests it). Must be called
-  in a `finally`.
+- `createServiceLogger({ service }).createSpan(seed)` (or `createSpan(seed, opts)`) — start the root
+  span; auto-attaches environment context.
+- `span.set(fields)` / `span.set(key, value)` — merge high-dimensionality fields (last-write-wins).
+- `span.span(name, seed?)` — open a child span; its `set`/`setError` write under `<name>.` and
+  `end()` stamps `<name>.duration_ms`. Use for phases (`presign`, `do`, `bucket`). Nestable.
+- `span.setError(err)` — record `error.message` + `error.type` (never the stack as a string blob).
+- `span.end()` — child: stamp its `<name>.duration_ms`; root: stamp `duration_ms` + flush ONE JSON
+  line to `console.log` (Cloudflare ingests it). Idempotent. The root `end()` must run in a `finally`.
 
 There is **one logger**, configured once. Two levels only: `info` (normal) and `error`. Never log
 unstructured strings; never `console.log` raw values in handlers.
 
 ## Access without prop-drilling
 
-Create the event in **middleware** and stash it. In the Worker use the request context
-(`c.set("event", event)` / `c.get("event")`); within deeper call stacks use `AsyncLocalStorage`
-(available under `nodejs_compat`) so any function can `getCurrentEvent().set(...)`. Handlers add
-**business context only** — the middleware owns timing, status, environment, and emission.
+Create the span in **middleware** and stash it. In `apps/web` it rides the server-fn context
+(`context.span`, set by `loggingMiddleware`); in `apps/api` (Hono) use `c.set("span", span)` /
+`c.get("span")`. Within deeper call stacks use `AsyncLocalStorage` (available under `nodejs_compat`)
+so any function can reach the current span. Handlers add **business context only** — the middleware
+owns timing, status, environment, and emission.
 
 ## One event per hop, correlated by `traceId`
 
@@ -98,5 +105,7 @@ high-cardinality querying. A **tail worker** can apply sampling and forwarding.
 
 ## Where the code lives
 
-`packages/logging` (the `WideEvent` + single logger + middleware factory). The Worker middleware
-lives in `apps/web`; the DO and each Queue/Workflow consumer create their own per-hop event.
+`packages/logging` (the `Span` type + `createSpan` / `createServiceLogger`). The server-fn logging
+middleware lives in `apps/web` (`src/lib/middleware.ts` → `context.span`); the Hono `spanMiddleware`
+lives in `apps/api` (`src/middleware/span.ts` → `c.get("span")`). The DO and each Queue/Workflow
+consumer create their own per-hop root span.

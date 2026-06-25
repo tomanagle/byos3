@@ -34,6 +34,7 @@ written; `agents/plans/` holds the phased roadmap. Read the relevant doc **befor
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability (wide events) | `agents/docs/logging.md` |
 | Secrets management (SOPS/age) | `agents/docs/secrets.md` |
+| Deployment, CI/CD, Pulumi, oxlint/oxfmt/lefthook | `agents/docs/deployment.md` |
 | Monorepo, Bun-vs-Wrangler, builds, testing | `agents/docs/monorepo.md` |
 | Competitors / prior art / positioning | `agents/docs/prior-art.md` |
 

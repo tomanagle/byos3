@@ -53,6 +53,8 @@ See [`AGENTS.md`](../../AGENTS.md) for the golden rules and the task→doc map.
   request per hop, the `@byos3/logging` package, fields, sampling, Cloudflare delivery.
 - **[secrets.md](./secrets.md)** — platform secret management with SOPS + age (local/prod), the
   setup/deploy scripts, and the platform-secrets-vs-end-user-bucket-credentials distinction.
+- **[deployment.md](./deployment.md)** — CI/CD: Pulumi IaC + GitHub Actions (lint/build + deploy),
+  oxlint/oxfmt/lefthook tooling, and the Pulumi-vs-Wrangler split.
 
 ## How to write a doc here
 

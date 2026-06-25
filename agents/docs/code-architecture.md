@@ -15,8 +15,13 @@ with `conventions.md` (house style) and `storage-providers.md` (capability flags
   *inside* their package and are not exported; only the port + a factory is.
 - **Entities** (`Volume`, `Connector`, `Namespace`) = ergonomic domain objects that *compose*
   ports. This is the `volume.presignGet(...)` surface you interact with.
-- **Composition root** = the one place (`apps/web/src/server/ctx.ts`) that reads `env` bindings and
-  wires concrete adapters into a `Ctx`. Nothing else touches globals.
+- **Use-cases** (`@byos3/services`) = the orchestration layer: `connectBucket`, `uploadIntent`,
+  `downloadUrl`, … Each takes a `ServiceContext` + validated input, enforces authorization
+  (`assertCan`), composes entities/repos, and returns a DTO. **All business logic lives here** so
+  the two transports stay thin and identical (see `api.md`).
+- **Composition roots** = each app has exactly one (`apps/web/src/server/ctx.ts`,
+  `apps/api/src/ctx.ts`). It reads `env` bindings, authenticates the caller into a `Principal`, and
+  wires concrete adapters into a `ServiceContext`. Nothing else touches globals.
 - **Capabilities** = credentials are never data on an object; they're sealed inside a driver
   closure that can *sign* but not *reveal*.
 
@@ -26,17 +31,23 @@ with `conventions.md` (house style) and `storage-providers.md` (capability flags
 ## Dependency direction
 
 ```
-        apps/web, apps/desktop                (composition roots + transport)
-                 │  depend on ▼
-        @byos3/core   ── entities (Volume, Connector, Namespace), use-cases, ports
+  apps/web (TanStack Start)      apps/api (Hono)        (composition roots + transports)
+        session cookie               x-api-key                 thin: authn → service → map error
+                 └──────────┬─────────────┘
+                            │  depend on ▼
+                 @byos3/services   ── use-cases: connectBucket, uploadIntent, downloadUrl, …
+                            │            (authorization + orchestration; ServiceContext in)
+                            │  depends on ▼
+        @byos3/core   ── entities (Volume, Connector, Namespace), authz policy, ports
                  │            ▲ implemented by
    ┌─────────────┼────────────┴───────────────┐
-@byos3/s3   @byos3/crypto   D1 repos (in app)  │   ← adapters
+@byos3/s3   @byos3/crypto   D1 repos (per app) │   ← adapters
    │             │                             │
         @byos3/protocol  (Zod schemas, DTOs, ID brands, capability types)  ← shared vocabulary, depends on nothing
 ```
 
-Dependencies point **inward** toward `protocol`. `core` and `s3` are **isomorphic** (only Web-std
+Dependencies point **inward** toward `protocol`. Both Workers depend on `@byos3/services`; nothing
+depends on an app. `core`, `services`, and `s3` are **isomorphic** (only Web-std
 `fetch`/`SubtleCrypto`), so they run in the Worker, the browser, and the desktop daemon
 identically. The *only* server-only thing is the secret **value** the vault unwraps — never the
 code (see "Security").
@@ -189,32 +200,69 @@ tree), not a request-scoped facade. It uses the same repository-style access to 
 lives in the DO (see `sync-engine.md`, `data-model.md`). `Volume`/`Connector` are stateless,
 request-scoped, and safe to construct per call.
 
-## The composition root & how you actually use it
+## Composition root → service → transport (how you actually use it)
+
+There are **three layers per request** and the rule is: *authn at the composition root, authz +
+logic in the service, nothing in the transport.*
+
+**1. The composition root** (`apps/web/src/server/ctx.ts`, `apps/api/src/ctx.ts`) — the ONLY module
+per app that reads bindings. It authenticates the caller into a `Principal` and wires adapters into
+a `ServiceContext`. Web resolves a Better Auth **session**; the API resolves an **API key** (→
+`keyScopes`). Returns `null`/throws `401` when unauthenticated.
 
 ```ts
-// apps/web/src/server/ctx.ts — the ONLY module that reads bindings
-import { env } from "cloudflare:workers";
-export function createCtx(): Ctx {
-  const logger = createLogger({ service: "web", version: env.CF_VERSION_METADATA?.id });
-  const vault  = new CredentialVault(env.CREDENTIAL_ENCRYPTION_KEY);
-  const db     = drizzle(env.DB);
-  const connectors = new D1ConnectorRepository(db, { vault, driverFactory: createDriver });
-  const volumes    = new D1VolumeRepository(db, { connectors, logger }); // returns hydrated Volume entities
-  return { logger, vault, db, connectors, volumes };
+// apps/web/src/server/ctx.ts — authn (session) + wiring. Returns null if unauthenticated.
+export async function createServiceContext(request: Request): Promise<ServiceContext | null> {
+  const { auth } = await import("./auth");
+  const session = await auth.api.getSession({ headers: request.headers });
+  if (!session?.user) return null;
+
+  const db = drizzle(env.DB);
+  const vault = new CredentialVault(env.CREDENTIAL_ENCRYPTION_KEY);
+  const connectors = new D1ConnectorRepository(db, vault, createDriver);
+  return {
+    principal: { userId: session.user.id, platformRole: session.user.role }, // API adds keyScopes
+    connectors,
+    volumes: new D1VolumeRepository(db, connectors),
+    memberships: new D1MembershipRepository(db),
+    vault,
+    driverFactory: createDriver,
+  };
 }
 ```
 
+**2. The use-case** (`@byos3/services`) — owns authorization + orchestration. Same function serves
+both Workers, so parity is structural (`api.md`).
+
 ```ts
-// a server function — thin: authorize, resolve entity, delegate (no business logic here)
-export const downloadUrl = createServerFn({ method: "POST" })
-  .validator(z.object({ volumeId: VolumeId, hash: Sha256 }))   // @byos3/protocol schemas
-  .handler(async ({ data, context }) => {
-    const ctx = context.ctx;                                   // attached by request middleware
-    await requirePermission(ctx, { action: "file:read" });     // RBAC guard (rbac.md)
-    const volume = await ctx.volumes.get(data.volumeId);       // hydrated entity
-    return volume.presignGet(volume.chunkKey(data.hash), { expiresIn: 300 });
-  });
+// @byos3/services/src/volumes.ts — authorize, resolve entity, delegate. ALL the logic lives here.
+export async function downloadUrl(ctx: ServiceContext, input: { volumeId: string; hash: string }) {
+  const volume = await ctx.volumes.get(input.volumeId);          // hydrated entity
+  await assertCan(ctx, volume.namespaceId, "file:read");         // RBAC + key-scope (rbac.md)
+  return volume.presignGet(volume.chunkKey(input.hash), { expiresIn: 300 });
+}
 ```
+
+**3. The transport** (a TanStack server route / server fn, or a Hono handler) — validate input,
+build the context, call the service, map errors. No business logic.
+
+```ts
+// apps/web/src/routes/api/v1/volumes/$id/download-url.ts — thin wrapper
+GET: async ({ request, params }) => {
+  const hash = new URL(request.url).searchParams.get("hash") ?? "";
+  if (!/^[a-f0-9]{64}$/.test(hash)) return json({ ok: false, error: "invalid_input" }, 400);
+  const ctx = await createServiceContext(request);
+  if (!ctx) return json({ ok: false, error: "unauthorized" }, 401);
+  const { downloadUrl } = await import("@byos3/services");
+  try {
+    return json({ ok: true, presigned: await downloadUrl(ctx, { volumeId: params.id, hash }) });
+  } catch (err) { return mapError(err); }       // AppError.code → HTTP status (forbidden→403, …)
+};
+```
+
+The `apps/api` (Hono) handler is the same three lines with a different authn step in its `ctx.ts`
+and `c.req`/`c.json` instead of `Request`/`Response`. **The body of any new capability is written
+once, in `@byos3/services`.**
 
 ### About `new Volume({ id })`
 
@@ -251,12 +299,29 @@ entity-owns-its-connection, no ambient globals).
 - **Provider divergence is data, not control flow.** Capability-gated methods (`putCors`) throw a
   typed `CapabilityError` instead of silently misbehaving on a provider that lacks the feature.
 
+## No dynamic imports — static-import server-only code
+
+Do **not** use `await import(...)` to hide server-only modules. In TanStack Start, a route file that
+exposes only `server.handlers` (and the `apps/api` Hono routers) is server-only by construction —
+the Start plugin keeps its imports out of the client bundle — so `cloudflare:workers`, the
+composition root (`ctx.ts`), `@byos3/auth`, and `@byos3/services` are all **statically imported** at
+the top. Server-only logic that a *client component* would otherwise pull in belongs in a server
+function (`createServerFn`) or a `server.handlers` route, never behind a dynamic import.
+
+## Database access — per-request D1 session
+
+The composition root reads `db` from **`createSessionDb(env.DB)`** (`@byos3/db`) so reads route to
+the nearest D1 replica with monotonic-read consistency. Create it once per request (web `ctx.ts`, api
+`db` middleware); never at module scope. Use `createDb` for scripts/tests. See `monorepo.md`.
+
 ## Errors & results
 
 `@byos3/core` throws a small typed `AppError` union (`{ code, ... }`, codes like
 `volume_not_found`, `scope_violation`, `capability_unsupported`, `provider_error`). Transport edges
-map `code → HTTP status`. **Never** surface raw provider error text or credentials to clients/logs;
-wrap them. Background jobs (Queues/Workflows) catch and record the typed error in their wide event.
+map `code → HTTP status`: the `apps/api` error handler maps `AppError` (+ `ZodError`) onto the
+Stripe-shape `ApiError` (`api.md`); the web routes map `code` directly. **Never** surface raw
+provider error text or credentials to clients/logs; wrap them. Background jobs catch and record the
+typed error in their wide event.
 
 ## Why this is understandable for agents & humans
 
@@ -275,8 +340,10 @@ wrap them. Background jobs (Queues/Workflows) catch and record the typed error i
 
 ## Checklist (do / don't)
 
-- ✅ Add behavior as an entity method or a `core` use-case; keep server fns / routes thin.
-- ✅ Depend on a port; obtain concrete impls only from `Ctx`.
+- ✅ Add behavior as an entity method (`core`) or a use-case (`@byos3/services`); keep both
+  transports (web routes/server fns **and** the Hono API) thin wrappers over the use-case.
+- ✅ Authorize with `assertCan(ctx, namespaceId, action)` **inside the service**, never in the transport.
+- ✅ Depend on a port; obtain concrete impls only from the `ServiceContext` built at the composition root.
 - ✅ Get a driver via `connector.driver(bucket)`; let `Volume` scope keys.
 - ✅ Add a provider via a `CAPABILITIES` row (+ an override only if truly divergent).
 - ❌ Don't `new Volume({ id })` in app code — use `ctx.volumes.get(id)`.

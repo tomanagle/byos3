@@ -8,7 +8,9 @@ connectors/volumes use this, and `data-model.md` for the `connector`/`volume` ta
 ## What we ask the user for (the connect contract)
 
 `{ provider, accessKeyId, secretAccessKey, endpoint?, region?, bucket, prefix = "byos3/" }`.
-We validate, then store the secret envelope-encrypted (`secrets.md` / `crypto`).
+We validate, then store the secret envelope-encrypted (`secrets.md` / `crypto`). `endpoint` is
+optional only for providers that ship a default (AWS S3); for everything else — and **required** for
+`custom` — the user supplies it.
 
 ## Our operation set
 
@@ -47,8 +49,9 @@ We validate, then store the secret envelope-encrypted (`secrets.md` / `crypto`).
 | **MinIO** (community) | access key / svc account | ✅ (policy) | ✅ (`s3:prefix`) | ❌ (env var; AIStor-only API) | `us-east-1` | **required** | self-hosted |
 | **Google Cloud Storage** | HMAC key (service account) | ❌ (bucket-level IAM) | ❌ | ❌ (gcloud out-of-band) | `auto` | **required** | XML/interop API |
 | **Oracle OCI** | Customer Secret Key | ❌ (user policy) | ❌ | ❌ (**none — proxy needed**) | real id + namespace | **required** | ListObjectsV2→V1; **breaks no-bytes rule** |
+| **Custom** | user-supplied access key/secret | — (user's call) | — | ❓ (unknown — operator sets it) | ignored (`any`) | **required** | escape hatch: any S3-compatible server via a user-supplied endpoint |
 
-Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API.
+Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown (depends on the server).
 
 ---
 
@@ -268,6 +271,24 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API.
 - **Docs:** [accesskey](https://docs.min.io/community/minio-object-store/reference/minio-mc-admin/mc-admin-accesskey.html) ·
   [S3 compatibility](https://docs.min.io/enterprise/aistor-object-store/developers/s3-api-compatibility/)
 
+## Custom (any S3-compatible server)
+
+The escape hatch: instead of picking a named provider, the user picks **Custom** and supplies their
+own **endpoint + access key + secret + bucket**. As long as the server speaks S3 (SigV4 +
+path-style addressing), it mounts and works — no provider-specific code path. This covers
+self-hosted servers, niche providers we haven't profiled, and **the MinIO fake bucket used by the
+e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
+
+- **Connect contract:** the **endpoint is required** (there is no default to fall back to). Region
+  is accepted but treated as `any` (passed to SigV4; many servers ignore it / want `us-east-1`).
+- **Capabilities:** conservative defaults — `forcePathStyle: true`, `corsViaS3Api: false` (we can't
+  assume the server exposes `PutBucketCors`; the operator may configure CORS out-of-band). Same
+  presigned, direct-to-bucket transfer path as every other provider — **bytes never touch the
+  worker**.
+- **e2e:** `bun run e2e` (Playwright, `workspaces/tests`) spins up MinIO, mounts it as a `custom`
+  volume, and runs a presigned PUT→HEAD→GET→DELETE round-trip
+  (`workspaces/tests/specs/storage-round-trip.spec.ts`). See `dev/README.md`.
+
 ## Google Cloud Storage (XML / interoperability)
 
 - **Create creds:** Cloud Storage → Settings → Interoperability → "Create a key for a service
@@ -342,6 +363,23 @@ Consequences to implement:
 - **Validation** = `ListObjectsV2(prefix="byos3/", max-keys=1)` everywhere (V1 fallback for OCI).
 - **Delete/GC** must honor `versionedByDefault` (B2: delete by `versionId` or guide a lifecycle rule).
 - **Per-user endpoint** (iDrive e2) is resolved at connect and stored on the `connector`/`volume`.
+
+## Out of scope — non-S3 providers (OneDrive, SharePoint, Google Drive, Dropbox, Box)
+
+**Decision (2026-06-25): byos3 is "bring your own _S3-compatible_ storage" — full stop.** Non-S3
+file services (Microsoft Graph, Google Drive, Dropbox, Box) are **deliberately out of scope**. They
+use OAuth2 + a file/folder REST model (not key-addressed blobs), and supporting them would dilute
+both the positioning (→ a generic, crowded "multi-cloud file" tool) and the architecture (OAuth
+connectors, upload-sessions, the no-anonymous-download caveat on Google Drive). The S3-compatible
+ecosystem (AWS, R2, B2, Wasabi, DO Spaces, Scaleway, Hetzner, Storj, Tigris, iDrive e2, MinIO,
+GCS-interop) is the entire product.
+
+*If that strategy ever changed*, the `StorageDriver` port could absorb them as a separate adapter
+family — a connector `kind: "oauth"` (encrypted refresh token; the Worker mints short-lived access
+tokens), upload-sessions instead of presigned PUT, pre-authenticated download URLs (with
+`requiresProxy` for Google Drive), still storing content-addressed chunks in a dedicated app folder
+(Google `drive.file` scope). That is a possible future **"labs" connector at most — not the brand,
+not the roadmap.**
 
 ## Support tiers (recommendation)
 

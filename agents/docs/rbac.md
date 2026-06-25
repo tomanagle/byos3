@@ -152,6 +152,30 @@ Beyond org-wide roles, a principal can be granted a role on a **subtree**:
 
 Deny if none permit the action.
 
+## Resource-level sharing (connectors & volumes)
+
+Connectors and volumes are **shared per-resource**, not via namespace membership (a deliberate
+product choice — simpler "invite a person to this drive" UX). A user holds a **resource role** on a
+specific connector/volume; access is decided by that role, independent of any namespace.
+
+- **`connector.ownerUserId`** is a real FK to `user`. The owner is seeded as a `full` member on
+  connect; `connector_member` / `volume_member` `(userId, resourceId, role)` hold the shares.
+- **Roles** (`@byos3/core/authz` `ResourceRole`): `read_only` (list/read/download — reader-equiv),
+  `read_write` (+ file CRUD + create shares — writer-equiv), `full` (+ manage/rename/delete the
+  resource and its members — admin). Built from the same AC statement vocabulary via `resourceCan`.
+- **Enforcement**: `@byos3/services` `assertCanVolume(ctx, volumeId, action)` /
+  `assertCanConnector(...)` resolve the caller's resource role (`ResourceAccessRepository`) and call
+  `resourceCan`; for API keys the action must ALSO be within the key scope (intersection — still
+  narrows). `listVolumes` returns the volumes the caller is a member of. Managing members
+  (`shareVolume`/`unshareVolume`) requires `full`.
+- **Storage vs access**: a volume keeps a `namespaceId` — its **sync/DO home** (where its journal
+  lives) — but that is *storage*, not the access boundary. Access is the resource role.
+
+> This **supersedes**, for connectors/volumes, the "sharing = a shared namespace mounted into roots"
+> model in `namespaces-and-acl.md §3`. That mount model + the `grant`/`shareLink` subtree tools
+> still apply *within* a volume's namespace for finer file-tree sharing (and remain the plan for
+> team workspaces). Deep cross-share *move* semantics are a known future consideration.
+
 ## Enforcement architecture
 
 Authorization is a **use-case in `@byos3/core`** (a port from `code-architecture.md`), enforced in

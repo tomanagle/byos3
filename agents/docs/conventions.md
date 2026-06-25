@@ -90,5 +90,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 
 ## Style
 
-- Prettier defaults; named exports (no default exports except where a framework requires).
+- Format with **oxfmt** (`bun run format`) and lint with **oxlint** (`bun run lint`) — not
+  Prettier/ESLint; lefthook runs them pre-commit (`deployment.md`). Named exports (no default
+  exports except where a framework requires).
 - Comments explain *why*, not *what*. Match the density of surrounding code.

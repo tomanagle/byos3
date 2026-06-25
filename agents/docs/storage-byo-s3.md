@@ -74,9 +74,18 @@ the `version` row and `chunk_index`).
 ## CORS
 
 Required on **every** user bucket for browser transfer. Set `AllowedOrigins` (your app origin, not
-`*` in prod), `AllowedMethods: [PUT, GET, HEAD]`, appropriate `AllowedHeaders`, and crucially
-**`ExposeHeaders: [ETag]`** (the browser must read ETag to complete multipart). Provide users a
-one-click/preset CORS config per provider during connect.
+`*` in prod), `AllowedMethods: [GET, PUT, HEAD]`, **`AllowedHeaders: ["*"]`** (a presigned PUT always
+preflights, and the File body carries a Content-Type, so a missing `AllowedHeaders` makes the
+preflight fail with "No 'Access-Control-Allow-Origin' header" — the #1 first-connect gotcha), and
+**`ExposeHeaders: [ETag]`** (the browser must read ETag to complete multipart).
+
+**Implementation.** The canonical rule lives once in `@byos3/s3` (`corsConfigXml` for `PutBucketCors`,
+`corsPolicyJson` for display). On connect the web app calls the `setupCors` server fn
+(`services/setupCors`): if the provider exposes the S3 CORS API (`capabilities.corsViaS3Api`) it
+attempts `PutBucketCors` with the connector credential; on success the user does nothing. If the
+provider can't (Wasabi auto-wildcard, MinIO env var) or the credential lacks permission (e.g. an R2
+object-RW token 403s — R2 needs an admin/edit-scoped token), the result carries the exact policy JSON
++ a provider docs link, which the UI shows for copy-paste (`components/app/cors-setup.tsx`).
 
 ## Garbage collection (per volume)
 

@@ -79,6 +79,7 @@ agents/
 | RAG / embeddings (later) | `agents/docs/ai-rag.md` |
 | Logging / observability | `agents/docs/logging.md` |
 | Secrets (SOPS/age), .dev.vars, prod deploy | `agents/docs/secrets.md` |
+| CI/CD, Pulumi IaC, GitHub Actions, oxlint/oxfmt/lefthook | `agents/docs/deployment.md` |
 | Monorepo, Bun vs Wrangler, builds | `agents/docs/monorepo.md` |
 
 ## How to work here
