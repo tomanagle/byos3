@@ -1,0 +1,9 @@
+# Used by oxfmt (it honors .gitignore + .prettierignore). Generated / vendored files.
+**/routeTree.gen.ts
+**/worker-configuration.d.ts
+**/dist/**
+**/.output/**
+**/.wrangler/**
+**/node_modules/**
+bun.lock
+*.md

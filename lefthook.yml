@@ -1,0 +1,18 @@
+# Git hooks (https://lefthook.dev). Installed via `bun run prepare` / `lefthook install`.
+# Pre-commit formats with oxfmt and lints with oxlint, restaging fixed files.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: oxfmt
+      glob: "*.{js,jsx,ts,tsx,json,jsonc,css}"
+      run: bunx oxfmt --write {staged_files}
+      stage_fixed: true
+    - name: oxlint
+      glob: "*.{js,jsx,ts,tsx}"
+      run: bunx oxlint {staged_files}
+
+# Run the full lint before pushing (CI also runs it).
+pre-push:
+  jobs:
+    - name: oxlint
+      run: bunx oxlint

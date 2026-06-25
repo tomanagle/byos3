@@ -1,0 +1,47 @@
+{
+  "name": "byos3",
+  "private": true,
+  "workspaces": [
+    "workspaces/apps/*",
+    "workspaces/packages/*",
+    "workspaces/tests"
+  ],
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --filter='@byos3/web' dev",
+    "build": "bun run --filter='@byos3/web' build",
+    "deploy": "bun run --filter='@byos3/web' deploy",
+    "cf-typegen": "bun run --filter='@byos3/web' cf-typegen",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check .",
+    "secrets:setup": "bun scripts/setup-secrets.ts",
+    "secrets:deploy": "bun scripts/deploy-secrets.ts",
+    "skills:list": "intent list",
+    "skills:validate": "intent validate",
+    "skills:stale": "intent stale",
+    "skills:scaffold": "intent scaffold",
+    "docker:up": "docker compose -f dev/docker-compose.yml up --build",
+    "docker:down": "docker compose -f dev/docker-compose.yml down",
+    "docker:nuke": "docker compose -f dev/docker-compose.yml down -v --rmi local --remove-orphans",
+    "e2e": "bun run --filter='@byos3/e2e' test",
+    "e2e:up": "docker compose -f dev/docker-compose.e2e.yml up -d",
+    "e2e:down": "docker compose -f dev/docker-compose.e2e.yml down -v",
+    "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && lefthook install || true"
+  },
+  "devDependencies": {
+    "@tanstack/intent": "^0.3.2",
+    "lefthook": "^2.1.9",
+    "oxfmt": "^0.56.0",
+    "oxlint": "^1.71.0"
+  },
+  "trustedDependencies": [
+    "@tailwindcss/oxide",
+    "esbuild",
+    "lightningcss",
+    "workerd",
+    "sharp",
+    "@cloudflare/workerd-darwin-arm64"
+  ]
+}

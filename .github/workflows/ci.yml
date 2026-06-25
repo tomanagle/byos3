@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Lint (oxlint)
+        run: bun run lint
+      - name: Format check (oxfmt)
+        run: bun run format:check
+      - name: Build
+        run: bun run build
+      # Agent skills (@tanstack/intent): frontmatter must validate, and skills must not be stale vs
+      # the source docs they reference. `stale` compares each skill's `sources` against the package's
+      # released state, so when a referenced agents/docs/*.md changes without the skill being
+      # regenerated + version-bumped, this flags it for review. See agents/docs/agent-skills.md.
+      - name: Agent skills — validate
+        run: bunx @tanstack/intent validate
+      - name: Agent skills — stale check
+        run: bunx @tanstack/intent stale

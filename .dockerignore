@@ -1,0 +1,12 @@
+# Build context trimming for dev/Dockerfile (context = repo root). Deps are installed inside the
+# image, so host node_modules/build output/local state are excluded. `.dev.vars` is intentionally
+# KEPT — the containers need local secrets to run (dev only).
+**/node_modules
+.git
+**/dist
+**/.wrangler
+**/.vite
+**/.output
+**/.turbo
+*.log
+.DS_Store
