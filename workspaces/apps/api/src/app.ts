@@ -1,4 +1,4 @@
-import { OpenAPIHono } from "@hono/zod-openapi";
+import { createRoute, OpenAPIHono, z } from "@hono/zod-openapi";
 
 import { authMiddleware } from "@/middleware/auth";
 import { dbMiddleware } from "@/middleware/db";
@@ -20,15 +20,23 @@ app.use("/v1/*", authMiddleware());
 app.onError(errorHandler());
 
 // ── OpenAPI + docs ──
-app.doc("/openapi.json", {
-  openapi: "3.1.0",
-  info: {
-    title: "byos3 API",
-    version: "0.1.0",
-    description:
-      "Bring-your-own-S3 storage. Programmatic access to volumes, connectors, and presigned, " +
-      "direct-to-bucket transfers. Anything the web app can do, an API key can do.",
-  },
+// `servers` is derived from the request origin, so the spec always advertises the host that served
+// it: https://api.<domain> in prod, http://localhost:8788 in dev. The published docs site at
+// docs.<domain> is a different origin, so scripts/build-docs.ts overrides `servers` with the real
+// https://api.<APP_DOMAIN> at build time.
+app.doc("/openapi.json", (c) => {
+  const { protocol, host } = new URL(c.req.url);
+  return {
+    openapi: "3.1.0",
+    info: {
+      title: "byos3 API",
+      version: "0.1.0",
+      description:
+        "Bring-your-own-S3 storage. Programmatic access to volumes, connectors, and presigned, " +
+        "direct-to-bucket transfers. Anything the web app can do, an API key can do.",
+    },
+    servers: [{ url: `${protocol}//${host}`, description: "byos3 API" }],
+  };
 });
 
 app.openAPIRegistry.registerComponent("securitySchemes", "ApiKey", {
@@ -56,8 +64,24 @@ app.get("/docs", (c) =>
   ),
 );
 
-// ── Public routes ──
-app.get("/healthz", (c) => c.body(null, 200));
+// ── Health ──
+// Documented (shows in the docs) liveness probe: no auth, no DB, returns 200 while the Worker serves.
+const HealthResponse = z.object({ status: z.literal("ok") }).openapi("Health");
+const HealthRoute = createRoute({
+  method: "get",
+  path: "/healthz",
+  tags: ["System"],
+  summary: "Health check",
+  description: "Liveness probe. Returns 200 while the Worker is serving requests. Unauthenticated.",
+  responses: {
+    200: {
+      content: { "application/json": { schema: HealthResponse } },
+      description: "Service is up",
+    },
+  },
+});
+// oxlint-disable-next-line jest/require-hook -- registers an OpenAPI route handler, not a test hook
+app.openapi(HealthRoute, (c) => c.json({ status: "ok" as const }, 200));
 
 // ── Resource routes (thin wrappers over @byos3/services) ──
 app.route("/", connectors);

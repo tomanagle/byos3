@@ -21,21 +21,23 @@ const res = await app.request("/openapi.json");
 if (!res.ok) {
   throw new Error(`Failed to fetch OpenAPI spec: ${res.status}`);
 }
-const spec = (await res.json()) as { info?: { version?: string } };
+const spec = (await res.json()) as {
+  info?: { version?: string };
+  servers?: { url: string; description?: string }[];
+};
 
 // Stamp the release version into the published spec so the docs always show what's live. `release`
 // bumps package.json and tags v<version>, so the docs + the deploy tag stay in lockstep.
 if (rootPkg.version && spec.info) spec.info.version = rootPkg.version;
 
-// The static site is a different origin from the API, so the spec's default `servers: [{ url: "/" }]`
-// would aim Scalar's "Try It" at docs.<domain> (which only serves static files). `baseServerURL`
-// redirects those calls to the real API. APP_DOMAIN is injected by CI for forks; defaults to
-// byos3.com. The local docs container overrides the whole URL via DOCS_BASE_SERVER_URL so "Try It"
-// targets the local API. (The inline /docs route on the live API Worker omits all of this - there,
-// same-origin "/" is correct, so "Try It" hits the worker that served the page.)
-const appDomain = process.env.APP_DOMAIN ?? "byos3.com";
-const baseServerURL = process.env.DOCS_BASE_SERVER_URL ?? `https://api.${appDomain}`;
-const scalarConfig = { baseServerURL };
+// The published site lives at docs.<domain> but the API is at api.<domain>, so point the spec's
+// `servers` at the real backend - Scalar shows it and sends "Try It" requests there. APP_DOMAIN is
+// the deploy var (so a fork gets https://api.<their-domain>); the local docs container overrides the
+// whole URL via DOCS_BASE_SERVER_URL so "Try It" hits the local API. This overrides the request-origin
+// servers the live Worker sets in src/app.ts.
+const apiUrl =
+  process.env.DOCS_BASE_SERVER_URL ?? `https://api.${process.env.APP_DOMAIN ?? "byos3.com"}`;
+spec.servers = [{ url: apiUrl, description: "byos3 API" }];
 
 // Scalar is loaded from jsDelivr; the spec is inlined as a JSON blob, so the published page is
 // self-contained (no backend call needed to render it).
@@ -47,10 +49,7 @@ const html = `<!doctype html>
     <title>byos3 API</title>
   </head>
   <body>
-    <script
-      id="api-reference"
-      type="application/json"
-      data-configuration='${JSON.stringify(scalarConfig)}'>
+    <script id="api-reference" type="application/json">
 ${JSON.stringify(spec)}
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
