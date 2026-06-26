@@ -16,7 +16,6 @@ test("prices are USD; annual = 10x monthly (2 months free)", () => {
 
 test("free is tight, paid is unlimited where it counts", () => {
   expect(FREE_LIMITS.volumes).toBe(1);
-  expect(FREE_LIMITS.devices).toBe(1);
   expect(isUnlimited(PAID_LIMITS.volumes)).toBe(true);
   expect(isUnlimited(FREE_LIMITS.volumes)).toBe(false);
   expect(PAID_LIMITS.opsPerMonth).toBeGreaterThan(FREE_LIMITS.opsPerMonth);

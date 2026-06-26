@@ -6,7 +6,7 @@ Paid subscriptions gate usage. Implemented with the **Better Auth Stripe plugin*
 ## The BYO pricing model (important)
 
 Because **storage is the user's own bucket, we do not resell GB.** We charge for the **service**:
-sync coordination, sharing/seats, version-history depth, number of volumes, devices, and AI.
+sync coordination, sharing/seats, version-history depth, and number of volumes.
 Entitlements meter coordination & features, **never raw storage size**.
 
 **One paid tier, billed per seat.** There is no personal-vs-team split: a solo account is a 1-seat
@@ -20,13 +20,13 @@ the billing code simple (`seats x price`, one entitlement set).
 | Live sync | yes | yes | n/a (all tiers) |
 | Sharing + RBAC (per-volume roles) | yes | yes | n/a (all tiers) |
 | Org-owned API keys | yes | yes | n/a (all tiers) |
-| Devices | 1 | unlimited | planned (needs a device registry) |
 | Version history | 30 days | long / unlimited | planned (needs retention) |
 | Members / seats | just you | seat-based | partial (seats purchasable; org-invite flow pending) |
 | Operations (commits/mo) | small monthly budget | generous budget | **yes** - Namespace DO meters commits |
 
-There is **no AI feature** (an earlier draft of this table listed an "AI quota" - removed; `ai` exists
-only as unused authz vocabulary). The free tier is a **permanent, metered on-ramp, not a trial**.
+There is **no AI feature** and **no device cap** (earlier drafts listed an "AI quota" + a device
+limit - both removed; `devices`/`ai` are gone from `PlanLimits`). The free tier is a **permanent,
+metered on-ramp, not a trial**.
 These numbers live in `packages/protocol/src/billing.ts` (`FREE_LIMITS` / `PAID_LIMITS`); the resolver
 is `@byos3/services` `resolveEntitlement`. **Enforcement status above is honest** - only the volume
 cap is live today; the rest land as the remaining Phase 3 gates ship (do not advertise an
@@ -98,7 +98,7 @@ stripe({
         name: "byos3",
         priceId: env.STRIPE_PRICE_MONTHLY, // $3 / seat / month
         annualDiscountPriceId: env.STRIPE_PRICE_ANNUAL, // $30 / seat / year
-        limits: { volumes: 9999, devices: 9999, historyDays: 3650, ai: 5000, seats: true },
+        limits: { volumes: 9999, historyDays: 3650, seats: true },
       },
     ],
     authorizeReference: async ({ user, referenceId }) =>
@@ -107,7 +107,7 @@ stripe({
 })
 ```
 
-**Free limits** (no active subscription): `{ volumes: 1, devices: 1, historyDays: 30, ai: 0, ops: <budget> }`.
+**Free limits** (no active subscription): `{ volumes: 1, historyDays: 30, opsPerMonth: <budget> }`.
 The edge/DO falls back to these when `subscription.list` returns no `active`/`trialing` sub.
 
 ## Reference IDs map onto namespaces
@@ -133,7 +133,7 @@ the single billing reference - see `rbac.md`, `namespaces-and-acl.md`, `data-mod
 ## Entitlement enforcement (two layers)
 
 1. **At the edge** - server functions / `/api/v1` routes check the active plan's `limits` before
-   privileged actions: connecting an Nth volume, inviting an Nth member, enabling AI.
+   privileged actions: connecting an Nth volume, inviting an Nth member.
 2. **In the DO** - the `Namespace` DO caches the entitlement (`entitlement` row, `data-model.md`)
    and enforces per-namespace limits inline: connected-device count, seats, version-history
    retention, and the **operation budget / rate limit** (the cost guardrail above). Refreshed on
