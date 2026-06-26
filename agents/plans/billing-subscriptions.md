@@ -9,29 +9,31 @@ Design refs: `billing.md`, `auth.md`, `namespaces-and-acl.md`, `data-model.md`.
 
 - Better Auth **Stripe plugin** (`@better-auth/stripe`) registered in the auth config; client
   plugin in `apps/web`.
-- Plans (`free` implicit, `pro`, `team`) with `limits` (volumes, devices, historyDays, ai, seats).
+- **One** seat-based paid plan (free = absence of an active sub) with `limits` (volumes, opsPerMonth)
+  + seats. No `devices`/`historyDays`/`ai` - those were dropped (billing.md): a device cap is not a
+  real cost lever, AI doesn't exist, and gating version-history depth would cap the user's own bucket.
 - Checkout (`subscription.upgrade`) + billing portal (`subscription.billingPortal`).
-- Webhook route `/api/auth/stripe/webhook`; on subscription events, **refresh the namespace DO
-  entitlement cache**.
+- Webhook route `/api/auth/stripe/webhook` (Better Auth handles it).
 - `authorizeReference` = namespace-owner check; the subscription `referenceId` is **always the
-  organization id** (`customerType: "organization"`); team adds `seats` = member count.
-- Enforcement: edge checks (connect Nth volume, invite Nth member, enable AI) + DO inline checks
-  (device count, history retention, seats).
-- Billing UI: current plan, usage vs limits, upgrade/manage.
+  organization id** (`customerType: "organization"`); `seats` = purchased member count.
+- Enforcement: edge (`resolveEntitlement` → `connectBucket` volume cap), seats (org plugin
+  `membershipLimit`/`invitationLimit`), and the DO op budget (per-month commit counter).
+- Billing UI: current plan, upgrade/manage; Team UI: seat-gated member invites.
 
 ## Tasks
 
-1. Configure plans + Stripe secrets (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
-2. Wire webhook → entitlement refresh into the DO.
-3. Implement entitlement read helper + edge guards in server fns / `/api/v1`.
-4. DO entitlement cache + inline limit enforcement (device connect, history GC window).
-5. Billing routes/UI with the Stripe client plugin.
+1. Configure the plan + Stripe secrets (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`).
+2. `resolveEntitlement` helper (active sub → `PAID_LIMITS` + seats, else `FREE_LIMITS`).
+3. Edge guards: `connectBucket` volume cap; seats via the org plugin's dynamic limits.
+4. DO op-budget guardrail: the Worker passes `opsPerMonth` into `commit`; the DO meters per month.
+5. Billing routes/UI + Team (member-invite) UI with the Stripe + organization client plugins.
 
 ## Acceptance criteria
 
-- A free user is blocked from mounting a 2nd volume / connecting a 3rd device, with a clear
-  upgrade prompt; a Pro user is not.
-- Upgrading via Checkout immediately lifts limits (DO entitlement refreshed from the webhook).
-- Version history older than the plan's `historyDays` is eligible for GC (ties to Phase 3 GC).
+- A free user is blocked from mounting a 2nd volume (HTTP 402) with a clear upgrade prompt; a paid
+  user is not.
+- A free user can't invite teammates (seats = 1); a paid user can invite up to their seat count.
+- A namespace past its monthly op budget is rejected at `commit` (402); upgrading lifts it on the
+  next write (the budget rides in per commit, no cache).
 - Only a namespace owner can open the billing portal (`authorizeReference`).
-- Team plan bills by `seats` = member count.
+- Billing is fully disabled (no Stripe plugin/UI) when `STRIPE_SECRET_KEY` is unset.

@@ -6,7 +6,8 @@ Paid subscriptions gate usage. Implemented with the **Better Auth Stripe plugin*
 ## The BYO pricing model (important)
 
 Because **storage is the user's own bucket, we do not resell GB.** We charge for the **service**:
-sync coordination, sharing/seats, version-history depth, and number of volumes.
+sync coordination, sharing/seats, the operation budget, and number of volumes. We do **not** gate
+version-history depth - that would cap the user's own bucket, against the BYO ethos (see below).
 Entitlements meter coordination & features, **never raw storage size**.
 
 **One paid tier, billed per seat.** There is no personal-vs-team split: a solo account is a 1-seat
@@ -20,18 +21,22 @@ the billing code simple (`seats x price`, one entitlement set).
 | Live sync | yes | yes | n/a (all tiers) |
 | Sharing + RBAC (per-volume roles) | yes | yes | n/a (all tiers) |
 | Org-owned API keys | yes | yes | n/a (all tiers) |
-| Version history | 30 days | long / unlimited | planned (needs retention) |
 | Members / seats | just you (1 seat) | seat-based | **yes** - org `membershipLimit`/`invitationLimit` |
 | Operations (commits/mo) | small monthly budget | generous budget | **yes** - Namespace DO meters commits |
 
-There is **no AI feature** and **no device cap** (earlier drafts listed an "AI quota" + a device
-limit - both removed; `devices`/`ai` are gone from `PlanLimits`). The free tier is a **permanent,
-metered on-ramp, not a trial**.
-These numbers live in `packages/protocol/src/billing.ts` (`FREE_LIMITS` / `PAID_LIMITS`); the resolver
-is `@byos3/services` `resolveEntitlement`. **Enforcement status above is honest** - volumes, the op
-budget, and seats are live; version-history retention is the one remaining gate (do not advertise an
-unenforced limit as a paid-only feature in the UI). Sharing, live sync, and API keys are available
-on every tier.
+There is **no AI feature**, **no device cap**, and **no version-history paywall** (earlier drafts
+listed all three - removed; `devices`/`ai`/`historyDays` are gone from `PlanLimits`). The free tier is
+a **permanent, metered on-ramp, not a trial**. These numbers live in
+`packages/protocol/src/billing.ts` (`FREE_LIMITS` / `PAID_LIMITS`); the resolver is `@byos3/services`
+`resolveEntitlement`. **Every limit in the table is enforced** - volumes (`connectBucket`), the op
+budget (Namespace DO), and seats (org plugin). Sharing, live sync, and API keys are all-tier.
+
+**Why no version-history gate.** The substrate keeps history for free (the journal + content-addressed,
+refcounted chunks already retain old versions, and a `restore` op exists - `sync-engine.md`), but old
+versions live in the **user's own bucket** and cost *their* S3 bill, not ours. Capping retention would
+limit what users do with their own storage - the opposite of "your bucket, your rules" - and save us
+nothing. So version history is a **future all-tier feature** (it needs a view/restore UI + chunk GC),
+never a paid gate.
 
 ## Seat = billed org member; volume membership = unbilled access
 
@@ -108,7 +113,7 @@ stripe({
         name: "byos3",
         priceId: env.STRIPE_PRICE_MONTHLY, // $3 / seat / month
         annualDiscountPriceId: env.STRIPE_PRICE_ANNUAL, // $30 / seat / year
-        limits: { volumes: 9999, historyDays: 3650, seats: true },
+        limits: { volumes: 9999, seats: true },
       },
     ],
     authorizeReference: async ({ user, referenceId }) =>
@@ -117,7 +122,7 @@ stripe({
 })
 ```
 
-**Free limits** (no active subscription): `{ volumes: 1, historyDays: 30, opsPerMonth: <budget> }`.
+**Free limits** (no active subscription): `{ volumes: 1, opsPerMonth: <budget> }`.
 The edge/DO falls back to these when `subscription.list` returns no `active`/`trialing` sub.
 
 ## Reference IDs map onto namespaces
@@ -142,12 +147,15 @@ the single billing reference - see `rbac.md`, `namespaces-and-acl.md`, `data-mod
 
 ## Entitlement enforcement (two layers)
 
-1. **At the edge** - server functions / `/api/v1` routes check the active plan's `limits` before
-   privileged actions: connecting an Nth volume, inviting an Nth member.
-2. **In the DO** - the `Namespace` DO caches the entitlement (`entitlement` row, `data-model.md`)
-   and enforces per-namespace limits inline: connected-device count, seats, version-history
-   retention, and the **operation budget / rate limit** (the cost guardrail above). Refreshed on
-   webhook or TTL.
+1. **At the edge** - `@byos3/services` `resolveEntitlement(ctx, namespaceId)` resolves the active
+   plan's limits, and the privileged use-cases gate on them: `connectBucket` rejects an Nth volume
+   past the cap (`limit_exceeded` → HTTP 402). Seats are gated separately by the org plugin's dynamic
+   `membershipLimit`/`invitationLimit` (`@byos3/auth`) so inviting/accepting past the seat count is
+   blocked at the auth layer (not just the UI).
+2. **In the DO** - the `Namespace` DO enforces the **operation budget** inline: the Worker passes the
+   plan's `opsPerMonth` into `commit`, and the DO's per-UTC-month `usage` counter rejects past it
+   (the cost guardrail above). The DO doesn't cache the entitlement - the budget rides in per commit,
+   so an upgrade takes effect on the next write.
 
 Read current state with `authClient.subscription.list({ query: { referenceId } })` → first
 `active`/`trialing` sub → its `limits`; **no active sub → the free `limits`**.

@@ -16,8 +16,6 @@ export const PRICE_CENTS = { monthly: 300, annual: 3000 } as const;
 export interface PlanLimits {
   /** mounted volumes */
   volumes: number;
-  /** version-history retention */
-  historyDays: number;
   /** soft monthly operation budget - the Cloudflare-cost guardrail (commits) */
   opsPerMonth: number;
 }
@@ -25,14 +23,12 @@ export interface PlanLimits {
 /** No active subscription. Permanent, metered on-ramp (not a trial). */
 export const FREE_LIMITS: PlanLimits = {
   volumes: 1,
-  historyDays: 30,
   opsPerMonth: 5_000,
 };
 
 /** Active subscription (per seat). */
 export const PAID_LIMITS: PlanLimits = {
   volumes: -1,
-  historyDays: 3650,
   opsPerMonth: 500_000,
 };
 

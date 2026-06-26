@@ -8,17 +8,17 @@ import { useWorkspace } from "./app-shell";
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
-// Keep this honest: list only what is actually built + enforced. The volume cap is the live
-// entitlement gate today (see @byos3/services); device/usage/history caps + team seats land with the
-// rest of Phase 3 (billing.md). API keys + sharing + live sync are available on every tier.
+// Keep this honest: list only what is actually built + enforced. The free/paid difference is the
+// volume cap (connectBucket gate), the monthly op budget (Namespace DO), and team seats (org member
+// invites) - all live in @byos3/services + @byos3/auth. Sharing, live sync, and API keys are
+// all-tier. No version-history paywall (it would cap the user's own bucket - see billing.md).
 const FREE_FEATURES = [
   "1 connected volume",
   "Live sync across devices",
   "Sharing + per-volume roles",
   "Org-owned API keys",
-  "Version history",
 ];
-const PAID_FEATURES = ["Unlimited volumes", "Everything in Free", "Per-seat team billing"];
+const PAID_FEATURES = ["Unlimited volumes", "Everything in Free", "Invite your team (per seat)"];
 
 /**
  * Billing: shows the current plan and lets an owner upgrade (per-seat, monthly/annual) via Stripe
