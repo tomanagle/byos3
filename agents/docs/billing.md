@@ -6,19 +6,52 @@ Paid subscriptions gate usage. Implemented with the **Better Auth Stripe plugin*
 ## The BYO pricing model (important)
 
 Because **storage is the user's own bucket, we do not resell GB.** We charge for the **service**:
-sync coordination, connected devices, team seats, version-history depth, number of volumes, and AI
-features. Entitlements meter coordination & features, **never raw storage size**.
+sync coordination, sharing/seats, version-history depth, number of volumes, devices, and AI.
+Entitlements meter coordination & features, **never raw storage size**.
 
-| | Free | Pro | Team |
-|---|---|---|---|
-| Namespaces | 1 personal | 1 personal | shared workspaces |
-| Volumes (mounted drives) | 1 | several | several |
-| Devices | 2 | unlimited | unlimited |
-| Version history | 7 days | long / unlimited | long / unlimited |
-| Members | — | — | seat-based (Stripe `seats`) |
-| AI / RAG | — | quota | quota |
+**One paid tier, billed per seat.** There is no personal-vs-team split: a solo account is a 1-seat
+subscription, a team is N seats, and inviting a member adds a seat. This keeps both the product and
+the billing code simple (`seats x price`, one entitlement set).
 
-These numbers live in each plan's `limits` object in the plugin config.
+| | Free | Paid |
+|---|---|---|
+| Price | **$0, permanent** | **$6 / seat / month** or **$60 / seat / year** (2 months free annual) |
+| Volumes (mounted drives) | 1 | unlimited (fair use) |
+| Devices | 1 | unlimited |
+| Live sync | yes | yes |
+| Version history | 30 days | long / unlimited |
+| Sharing + RBAC | - | full (per-volume roles) |
+| Members | just you | seat-based |
+| AI / RAG | - | quota |
+| Operations | small monthly budget | fair-use rate limit |
+
+The free tier is a **permanent, metered on-ramp, not a trial** (the earlier cheap solo plan folds
+into it). These numbers live in the plan's `limits` object plus the namespace `entitlement`.
+
+## Seat = billed org member; volume membership = unbilled access
+
+The org (namespace) is the **billing + identity** boundary; the **seat is the org member**. Inviting
+someone into the org consumes a seat (billed). Granting a member access to a specific volume
+(`volume_member`: `full | read_write | read_only` - `rbac.md`) is an **access grant, never a billing
+event**. We never bill per volume or per share. **v1:** volumes can only be granted to org members,
+so "has access" == "is a paid seat" - trivial billing, no guest concept. **v2 (the data model
+already supports it):** external single-volume *guests* who use their own free account, do not
+consume your seats, capped per account to prevent abuse.
+
+## Cost guardrail (the only real Cloudflare cost)
+
+Our marginal cost is **control-plane operations** (commits, syncs, presigns, pokes) + D1 - not
+storage or egress (the user's bucket pays those), and **not idle connections** (the `Namespace` DO
+uses the WebSocket **Hibernation API**, so idle live-sync sockets are near-free). So we meter
+**operations**, and a per-namespace operation rate limit runs on **every** tier:
+
+- **Free:** a small monthly operation budget; soft-throttle past it.
+- **Paid:** a generous fair-use rate limit, scaled by seats.
+
+This is the guardrail that makes a flat **$60/yr safe**: no account can cost more than roughly its
+plan's worth of Cloudflare requests. Enforced in the `Namespace` DO (the single writer = the natural
+op chokepoint): a per-namespace counter returns **HTTP 429** past the budget/rate. Read-only server
+fns use a KV/D1 counter or Cloudflare's Rate Limiting binding.
 
 ## Configuration
 
@@ -29,28 +62,34 @@ stripe({
   createCustomerOnSignUp: true,
   subscription: {
     enabled: true,
+    // ONE seat-based plan. Solo = 1 seat; a team passes seats = member count at checkout.
+    // Free is NOT a plan here - it's the absence of an active subscription + the free `limits`.
     plans: [
-      { name: "pro",  priceId: "...", annualDiscountPriceId: "...",
-        limits: { volumes: 5,  devices: 9999, historyDays: 3650, ai: 1000 },
-        freeTrial: { days: 14 } },
-      { name: "team", priceId: "...",
-        limits: { volumes: 20, devices: 9999, historyDays: 3650, ai: 5000, seats: true } },
+      {
+        name: "byos3",
+        priceId: env.STRIPE_PRICE_MONTHLY, // $6 / seat / month
+        annualDiscountPriceId: env.STRIPE_PRICE_ANNUAL, // $60 / seat / year
+        limits: { volumes: 9999, devices: 9999, historyDays: 3650, ai: 5000, seats: true },
+      },
     ],
-    authorizeReference: async ({ user, referenceId, action }) =>
-      isNamespaceOwner(user.id, referenceId),   // owner-only billing actions
+    authorizeReference: async ({ user, referenceId }) =>
+      isNamespaceOwner(user.id, referenceId), // owner-only billing actions
   },
 })
 ```
 
+**Free limits** (no active subscription): `{ volumes: 1, devices: 1, historyDays: 30, ai: 0, ops: <budget> }`.
+The edge/DO falls back to these when `subscription.list` returns no `active`/`trialing` sub.
+
 ## Reference IDs map onto namespaces
 
 A namespace **is** a Better Auth organization (`rbac.md`), so the subscription `referenceId` is
-always the **organization id** with `customerType: "organization"` (a personal namespace is a
-personal org; a team adds `seats` = member count — in plan config `seats: true` marks a seat-based
-plan, while the actual count is the per-subscription `seats` quantity passed at checkout).
+always the **organization id** with `customerType: "organization"`. The single plan is seat-based
+(`seats: true`); the seat quantity is the per-subscription `seats` passed at checkout - **1 for a
+solo account, N for a team** (one member = one seat). There is no separate personal plan.
 
 `authorizeReference` (owner-only) pairs with the `billing:manage` permission gate. The org id is
-the single billing reference — see `rbac.md`, `namespaces-and-acl.md`, `data-model.md`.
+the single billing reference - see `rbac.md`, `namespaces-and-acl.md`, `data-model.md`.
 
 ## Flows
 
@@ -64,20 +103,22 @@ the single billing reference — see `rbac.md`, `namespaces-and-acl.md`, `data-m
 
 ## Entitlement enforcement (two layers)
 
-1. **At the edge** — server functions / `/api/v1` routes check the active plan's `limits` before
+1. **At the edge** - server functions / `/api/v1` routes check the active plan's `limits` before
    privileged actions: connecting an Nth volume, inviting an Nth member, enabling AI.
-2. **In the DO** — the `Namespace` DO caches the entitlement (`entitlement` row, `data-model.md`)
+2. **In the DO** - the `Namespace` DO caches the entitlement (`entitlement` row, `data-model.md`)
    and enforces per-namespace limits inline: connected-device count, seats, version-history
-   retention. Refreshed on webhook or TTL.
+   retention, and the **operation budget / rate limit** (the cost guardrail above). Refreshed on
+   webhook or TTL.
 
 Read current state with `authClient.subscription.list({ query: { referenceId } })` → first
-`active`/`trialing` sub → its `limits`.
+`active`/`trialing` sub → its `limits`; **no active sub → the free `limits`**.
 
 ## Gotchas
 
-- One active subscription per `referenceId` — pass `subscriptionId` when switching plans.
-- One free trial per account across all plans.
+- One active subscription per `referenceId` - pass `subscriptionId` when switching monthly/annual.
+- We don't use a free trial as the on-ramp (the free *tier* is permanent + metered). A short
+  conversion trial can be added later via `freeTrial` on the plan; one trial per account then.
 - All line items in a checkout must share a billing interval.
-- A team with an active subscription can't be auto-deleted — guard in `beforeDelete`.
+- A team with an active subscription can't be auto-deleted - guard in `beforeDelete`.
 
 See `plans/billing-subscriptions.md` for the build steps.
