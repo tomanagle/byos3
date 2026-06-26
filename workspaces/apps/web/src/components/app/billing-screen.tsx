@@ -8,14 +8,17 @@ import { useWorkspace } from "./app-shell";
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
-const FREE_FEATURES = ["1 volume", "1 device", "30-day version history", "Live sync"];
-const PAID_FEATURES = [
-  "Unlimited volumes",
-  "Unlimited devices",
-  "Full version history",
-  "Sharing + roles (per seat)",
-  "API keys + AI quota",
+// Keep this honest: list only what is actually built + enforced. The volume cap is the live
+// entitlement gate today (see @byos3/services); device/usage/history caps + team seats land with the
+// rest of Phase 3 (billing.md). API keys + sharing + live sync are available on every tier.
+const FREE_FEATURES = [
+  "1 connected volume",
+  "Live sync across devices",
+  "Sharing + per-volume roles",
+  "Org-owned API keys",
+  "Version history",
 ];
+const PAID_FEATURES = ["Unlimited volumes", "Everything in Free", "Per-seat team billing"];
 
 /**
  * Billing: shows the current plan and lets an owner upgrade (per-seat, monthly/annual) via Stripe

@@ -13,20 +13,25 @@ Entitlements meter coordination & features, **never raw storage size**.
 subscription, a team is N seats, and inviting a member adds a seat. This keeps both the product and
 the billing code simple (`seats x price`, one entitlement set).
 
-| | Free | Paid |
-|---|---|---|
-| Price | **$0, permanent** | **$3 / seat / month** or **$30 / seat / year** (2 months free annual) |
-| Volumes (mounted drives) | 1 | unlimited (fair use) |
-| Devices | 1 | unlimited |
-| Live sync | yes | yes |
-| Version history | 30 days | long / unlimited |
-| Sharing + RBAC | - | full (per-volume roles) |
-| Members | just you | seat-based |
-| AI / RAG | - | quota |
-| Operations | small monthly budget | fair-use rate limit |
+| | Free | Paid | Enforced? |
+|---|---|---|---|
+| Price | **$0, permanent** | **$3 / seat / month** or **$30 / seat / year** (2 months free annual) | - |
+| Volumes (mounted drives) | 1 | unlimited (fair use) | **yes** - `connectBucket` gate |
+| Live sync | yes | yes | n/a (all tiers) |
+| Sharing + RBAC (per-volume roles) | yes | yes | n/a (all tiers) |
+| Org-owned API keys | yes | yes | n/a (all tiers) |
+| Devices | 1 | unlimited | planned (needs a device registry) |
+| Version history | 30 days | long / unlimited | planned (needs retention) |
+| Members / seats | just you | seat-based | partial (seats purchasable; org-invite flow pending) |
+| Operations | small monthly budget | fair-use rate limit | planned (Namespace DO guardrail) |
 
-The free tier is a **permanent, metered on-ramp, not a trial** (the earlier cheap solo plan folds
-into it). These numbers live in the plan's `limits` object plus the namespace `entitlement`.
+There is **no AI feature** (an earlier draft of this table listed an "AI quota" - removed; `ai` exists
+only as unused authz vocabulary). The free tier is a **permanent, metered on-ramp, not a trial**.
+These numbers live in `packages/protocol/src/billing.ts` (`FREE_LIMITS` / `PAID_LIMITS`); the resolver
+is `@byos3/services` `resolveEntitlement`. **Enforcement status above is honest** - only the volume
+cap is live today; the rest land as the remaining Phase 3 gates ship (do not advertise an
+unenforced limit as a paid-only feature in the UI). Sharing, live sync, and API keys are available
+on every tier.
 
 ## Seat = billed org member; volume membership = unbilled access
 
