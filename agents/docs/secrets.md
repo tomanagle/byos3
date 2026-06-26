@@ -39,7 +39,7 @@ works fully without Stripe. See `billing.md`.
 
 ## GitHub OAuth (optional)
 
-`GITHUB_CLIENT_ID` + `GITHUB_CLIENT_SECRET` enable social login (both unset = email/password only).
+`AUTH_GITHUB_CLIENT_ID` + `AUTH_GITHUB_CLIENT_SECRET` enable social login (both unset = email/password only).
 Local: a dev OAuth App with callback `http://localhost:4500/api/auth/callback/github`. Prod: a
 **separate** app with the prod callback `https://<app-domain>/api/auth/callback/github`; store both
 as GitHub Actions secrets. See `auth.md`.

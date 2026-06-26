@@ -16,12 +16,12 @@ export const getPublicConfig = createServerFn({ method: "GET" }).handler(
   async (): Promise<PublicConfig> => {
     const e = env as {
       STRIPE_SECRET_KEY?: string;
-      GITHUB_CLIENT_ID?: string;
-      GITHUB_CLIENT_SECRET?: string;
+      AUTH_GITHUB_CLIENT_ID?: string;
+      AUTH_GITHUB_CLIENT_SECRET?: string;
     };
     return {
       billingEnabled: Boolean(e.STRIPE_SECRET_KEY),
-      githubOAuth: Boolean(e.GITHUB_CLIENT_ID && e.GITHUB_CLIENT_SECRET),
+      githubOAuth: Boolean(e.AUTH_GITHUB_CLIENT_ID && e.AUTH_GITHUB_CLIENT_SECRET),
     };
   },
 );

@@ -16,8 +16,8 @@ const e = env as {
   STRIPE_WEBHOOK_SECRET?: string;
   STRIPE_PRICE_MONTHLY?: string;
   STRIPE_PRICE_ANNUAL?: string;
-  GITHUB_CLIENT_ID?: string;
-  GITHUB_CLIENT_SECRET?: string;
+  AUTH_GITHUB_CLIENT_ID?: string;
+  AUTH_GITHUB_CLIENT_SECRET?: string;
 };
 
 export const auth = createAuth({
@@ -32,7 +32,7 @@ export const auth = createAuth({
     priceAnnual: e.STRIPE_PRICE_ANNUAL,
   },
   // GitHub OAuth (enabled only when both are set). Callback: /api/auth/callback/github.
-  github: { clientId: e.GITHUB_CLIENT_ID, clientSecret: e.GITHUB_CLIENT_SECRET },
+  github: { clientId: e.AUTH_GITHUB_CLIENT_ID, clientSecret: e.AUTH_GITHUB_CLIENT_SECRET },
   trustedOrigins: [
     // Production: the app's own origin (+ www) so Better Auth's CSRF check accepts it.
     ...(appDomain ? [`https://${appDomain}`, `https://www.${appDomain}`] : []),

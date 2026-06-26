@@ -18,7 +18,7 @@ Authentication is **Better Auth**, running in the same Worker as the app, backed
 
 ## Social login (GitHub OAuth)
 
-Enabled **only when both `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are set** - `createAuth` adds
+Enabled **only when both `AUTH_GITHUB_CLIENT_ID` and `AUTH_GITHUB_CLIENT_SECRET` are set** - `createAuth` adds
 the `github` social provider conditionally, otherwise it's email/password only. The sign-in/up pages
 show a "Continue with GitHub" button gated by the `githubOAuth` flag from `getPublicConfig`
 (`fn/config.ts`); the client starts the flow with
