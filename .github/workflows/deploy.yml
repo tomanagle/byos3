@@ -31,6 +31,9 @@ concurrency:
 #     CREDENTIAL_ENCRYPTION_KEY   32-byte base64 key       (openssl rand -base64 32)
 #     STRIPE_SECRET_KEY           (optional) LIVE Stripe key - enables billing: Pulumi provisions the
 #                                 product/prices/webhook and the web Worker runs Checkout. Unset = off.
+#     AUTH_GITHUB_CLIENT_SECRET   (optional) GitHub OAuth app secret - enables "Continue with GitHub"
+#   Secrets OR Variables:
+#     AUTH_GITHUB_CLIENT_ID       (optional) GitHub OAuth app client id (pairs with the secret above)
 #   Variables:
 #     APP_DOMAIN                  your apex domain, e.g. example.com  (the zone must exist in your CF account)
 #     PULUMI_STACK                stack name (optional, default `production`)
@@ -68,6 +71,12 @@ jobs:
       # Unset = billing stays disabled (Pulumi skips Stripe, the Stripe Worker secrets aren't set).
       STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
       STRIPE_API_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      # Social login (optional). The GitHub OAuth app credentials for the web Worker - set both to show
+      # "Continue with GitHub", neither for email/password only. CLIENT_ID is not sensitive, so accept
+      # it as a repo Variable or a Secret; the secret is secret-only. (GitHub forbids GITHUB_-prefixed
+      # names, hence AUTH_GITHUB_*.)
+      AUTH_GITHUB_CLIENT_ID: ${{ secrets.AUTH_GITHUB_CLIENT_ID || vars.AUTH_GITHUB_CLIENT_ID }}
+      AUTH_GITHUB_CLIENT_SECRET: ${{ secrets.AUTH_GITHUB_CLIENT_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -171,6 +180,11 @@ jobs:
             printf '%s' "${{ steps.infra.outputs.stripe_monthly }}" | bunx wrangler secret put STRIPE_PRICE_MONTHLY
             printf '%s' "${{ steps.infra.outputs.stripe_annual }}" | bunx wrangler secret put STRIPE_PRICE_ANNUAL
             bunx wrangler secret put STRIPE_WEBHOOK_SECRET < "$RUNNER_TEMP/stripe_webhook"
+          fi
+          # Social login (web Worker only). "Continue with GitHub" shows when both are set.
+          if [ -n "$AUTH_GITHUB_CLIENT_ID" ] && [ -n "$AUTH_GITHUB_CLIENT_SECRET" ]; then
+            printf '%s' "$AUTH_GITHUB_CLIENT_ID" | bunx wrangler secret put AUTH_GITHUB_CLIENT_ID
+            printf '%s' "$AUTH_GITHUB_CLIENT_SECRET" | bunx wrangler secret put AUTH_GITHUB_CLIENT_SECRET
           fi
       - name: Set API secrets
         working-directory: workspaces/apps/api

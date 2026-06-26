@@ -66,8 +66,9 @@ its own deps in CI.
   5. Set Worker secrets on **both** app Workers: `TURNSTILE_SECRET_KEY` (from the Pulumi output) +
      `BETTER_AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` (from GitHub secrets). When `STRIPE_SECRET_KEY`
      is set, the **web** Worker also gets `STRIPE_SECRET_KEY` + the Pulumi-provisioned `STRIPE_PRICE_MONTHLY`
-     / `STRIPE_PRICE_ANNUAL` / `STRIPE_WEBHOOK_SECRET` (billing.md); unset = billing stays off. The docs
-     Worker is static assets only - no secrets.
+     / `STRIPE_PRICE_ANNUAL` / `STRIPE_WEBHOOK_SECRET` (billing.md); unset = billing stays off. Likewise,
+     when both `AUTH_GITHUB_CLIENT_ID` + `AUTH_GITHUB_CLIENT_SECRET` are set they go on the **web** Worker
+     to enable "Continue with GitHub" (auth.md). The docs Worker is static assets only - no secrets.
 
   CI sets the Worker secrets directly from GitHub secrets (via `wrangler secret put`), so a fork
   needs no encrypted-secrets tooling - just set the GitHub secrets/variables below (see `secrets.md`).
