@@ -17,6 +17,7 @@ export function VolumeRail({
   activeId,
   loading,
   view,
+  billingEnabled,
   onView,
   onSelect,
   onConnect,
@@ -25,6 +26,7 @@ export function VolumeRail({
   activeId: string | null;
   loading: boolean;
   view: View;
+  billingEnabled: boolean;
   onView: (v: View) => void;
   onSelect: (id: string) => void;
   onConnect: () => void;
@@ -127,15 +129,17 @@ export function VolumeRail({
         Connect a bucket
       </button>
 
-      <Link
-        to="/billing"
-        className="mt-auto flex items-center justify-between gap-2 border-t border-border p-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-      >
-        <span className="inline-flex items-center gap-2.5">
-          <CreditCard className="size-[17px]" /> Billing
-        </span>
-        <span className="text-xs">Manage</span>
-      </Link>
+      {billingEnabled && (
+        <Link
+          to="/billing"
+          className="mt-auto flex items-center justify-between gap-2 border-t border-border p-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+        >
+          <span className="inline-flex items-center gap-2.5">
+            <CreditCard className="size-[17px]" /> Billing
+          </span>
+          <span className="text-xs">Manage</span>
+        </Link>
+      )}
     </aside>
   );
 }

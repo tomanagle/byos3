@@ -53,6 +53,14 @@ plan's worth of Cloudflare requests. Enforced in the `Namespace` DO (the single 
 op chokepoint): a per-namespace counter returns **HTTP 429** past the budget/rate. Read-only server
 fns use a KV/D1 counter or Cloudflare's Rate Limiting binding.
 
+## Disabled without a key
+
+Billing is **off unless `STRIPE_SECRET_KEY` is set** (`secrets.md`). `createAuth` builds the Stripe
+plugin only when the key is present, so on a keyless deploy the `/api/auth/stripe/*` endpoints
+simply don't exist. The web client mirrors this: a `billingEnabled` flag (a server fn reading the
+env) hides the rail's Billing entry and shows a "billing not enabled" state on `/billing` instead of
+the upgrade flow. Everyone runs on the free limits; core file sync is unaffected.
+
 ## Configuration
 
 ```ts

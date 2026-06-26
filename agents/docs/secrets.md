@@ -19,6 +19,24 @@ So `CREDENTIAL_ENCRYPTION_KEY` is the **root key** that protects users' bucket c
 The web + api Workers bind the **same** D1, so they must share the **same**
 `CREDENTIAL_ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`.
 
+## Billing secrets (Stripe)
+
+Billing runs on the **web** Worker only (Stripe Checkout + the webhook at
+`/api/auth/stripe/webhook`). Four vars, all optional:
+
+- `STRIPE_SECRET_KEY` - the Stripe API key. **Sandbox** key locally, **live** key in prod.
+- `STRIPE_WEBHOOK_SECRET` - the webhook signing secret.
+- `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_ANNUAL` - the per-seat price IDs.
+
+**Local:** put only `STRIPE_SECRET_KEY` (your sandbox key) in `workspaces/apps/web/.dev.vars`; the
+`stripe` dev sidecar (`dev/stripe-setup.sh`) then ensures the product/prices exist in the sandbox and
+auto-fills the other three. **Prod:** set all four as GitHub secrets (the price IDs come from the
+live Stripe product Pulumi provisions - see `billing.md`).
+
+**No `STRIPE_SECRET_KEY` means billing is disabled:** `createAuth` omits the Stripe plugin, the
+`/api/auth/stripe/*` endpoints don't exist, and the app hides the billing/upgrade UI. Core file sync
+works fully without Stripe. See `billing.md`.
+
 ## Local development
 
 ```bash

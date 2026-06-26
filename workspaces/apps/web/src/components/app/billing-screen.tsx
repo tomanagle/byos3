@@ -4,6 +4,7 @@ import { Check, ExternalLink, Loader2, Minus, Plus } from "lucide-react";
 import { useState } from "react";
 import { authClient } from "#/lib/auth-client";
 import { cn } from "#/lib/utils";
+import { useWorkspace } from "./app-shell";
 
 const usd = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 
@@ -22,11 +23,13 @@ const PAID_FEATURES = [
  * so we resolve the user's org first. See agents/docs/billing.md.
  */
 export function BillingScreen() {
+  const { billingEnabled } = useWorkspace();
   const [annual, setAnnual] = useState(true);
   const [seats, setSeats] = useState(1);
 
   const orgs = useQuery({
     queryKey: ["orgs"],
+    enabled: billingEnabled,
     queryFn: async () => {
       const r = await authClient.organization.list();
       if (r.error) throw new Error(r.error.message ?? "failed");
@@ -75,6 +78,19 @@ export function BillingScreen() {
   const annualEach = usd(PRICE_CENTS.annual);
   const perSeat = annual ? annualEach : monthlyEach;
   const loading = orgs.isLoading || subs.isLoading;
+
+  if (!billingEnabled) {
+    return (
+      <div className="mx-auto max-w-2xl px-6 py-16 text-center">
+        <h1 className="font-display text-2xl font-semibold tracking-tight">Billing</h1>
+        <p className="mt-3 text-base text-muted-foreground">
+          Billing isn&apos;t enabled in this environment, so everything runs on the free tier -
+          connect buckets and sync files with no subscription. Paid plans appear once a Stripe key
+          is configured.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">

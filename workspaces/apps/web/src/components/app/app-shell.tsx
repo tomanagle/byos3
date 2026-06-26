@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { createContext, useContext, useMemo, useState } from "react";
 import type { Me } from "#/fn/auth";
+import { getBillingEnabled } from "#/fn/config";
 import { listVolumes } from "#/fn/volumes";
 import { ConnectDialog } from "./connect-dialog";
 import { Topbar } from "./topbar";
@@ -19,6 +20,8 @@ interface Workspace {
   volumesLoading: boolean;
   /** The active volume = drop target for uploads (URL param on /:id, else the first volume). */
   activeVolumeId: string | null;
+  /** Billing is configured (a Stripe key is set) - gates the billing/upgrade UI. */
+  billingEnabled: boolean;
   openConnect: () => void;
   openVolume: (id: string) => void;
 }
@@ -48,6 +51,12 @@ function viewFor(pathname: string): View {
 export function AppShell({ me }: { me: Me }) {
   const volumesQuery = useQuery({ queryKey: ["volumes"], queryFn: () => listVolumes() });
   const volumes = volumesQuery.data ?? [];
+  const billing = useQuery({
+    queryKey: ["billing-enabled"],
+    queryFn: () => getBillingEnabled(),
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+  const billingEnabled = billing.data ?? false;
   const params = useParams({ strict: false }) as { volumeId?: string };
   const location = useLocation();
   const navigate = useNavigate();
@@ -67,11 +76,12 @@ export function AppShell({ me }: { me: Me }) {
       volumes,
       volumesLoading: volumesQuery.isLoading,
       activeVolumeId,
+      billingEnabled,
       openConnect: () => setConnectOpen(true),
       openVolume,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- openVolume is stable via navigate
-    [volumes, volumesQuery.isLoading, activeVolumeId],
+    [volumes, volumesQuery.isLoading, activeVolumeId, billingEnabled],
   );
 
   return (
@@ -85,6 +95,7 @@ export function AppShell({ me }: { me: Me }) {
               activeId={activeVolumeId}
               loading={volumesQuery.isLoading}
               view={view}
+              billingEnabled={billingEnabled}
               onView={onView}
               onSelect={openVolume}
               onConnect={() => setConnectOpen(true)}
