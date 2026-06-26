@@ -7,9 +7,11 @@ import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { joinWaitlist } from "#/fn/waitlist";
 
-// Cloudflare Turnstile PUBLIC test site key (always passes). Phase 1 will provide the real key
-// via a server loader reading env.TURNSTILE_SITE_KEY.
-const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
+// The PUBLIC Turnstile site key, inlined into the client bundle at build time. In prod CI sets
+// VITE_TURNSTILE_SITE_KEY from the Pulumi-provisioned widget; locally it falls back to Cloudflare's
+// always-pass test key, so `vite dev` needs no setup. (The matching SECRET is a server-side Worker
+// secret used by the waitlist server fn - never shipped to the client.)
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA";
 
 const SPECS = [
   { icon: Database, label: "Bring your own S3 / R2 / B2" },
