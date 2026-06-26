@@ -1,6 +1,6 @@
 import type { NodeRecord } from "@byos3/protocol";
 import { CommitIntentInput, JournalOp, TreeAncestorsInput, TreeListInput } from "@byos3/protocol";
-import { assertCan } from "@byos3/services";
+import { assertCan, resolveEntitlement } from "@byos3/services";
 import { createServerFn } from "@tanstack/react-start";
 import { env } from "cloudflare:workers";
 import { authMiddleware } from "#/lib/middleware";
@@ -13,7 +13,11 @@ import { authMiddleware } from "#/lib/middleware";
 export type TreeEntry = NodeRecord & { sha256: string | null; size: number | null };
 
 interface NamespaceStub {
-  commit(op: JournalOp, actorDeviceId?: string | null): Promise<{ head: number }>;
+  commit(
+    op: JournalOp,
+    actorDeviceId?: string | null,
+    opsBudget?: number,
+  ): Promise<{ head: number }>;
   commitIntent(volumeId: string, hashes: string[]): Promise<{ missing: string[] }>;
   sync(cursor: number): Promise<{ head: number; ops: unknown[] }>;
   list(parentGid: string): Promise<TreeEntry[]>;
@@ -63,8 +67,10 @@ export const treeCommit = createServerFn({ method: "POST" })
     // createFolder/createFile/addVersion mutate content; the rest are structural - all need write.
     context.span.set({ fn: "treeCommit", "tree.op": data.type });
     await assertCan(context.ctx, nsId, data.type === "delete" ? "file:delete" : "file:create");
-    const result = await namespaceStub(nsId).commit(data);
-    context.span.set({ "tree.head": result.head });
+    // Cost guardrail: pass the plan's monthly op budget; the DO rejects past it (billing.md).
+    const ent = await resolveEntitlement(context.ctx, nsId);
+    const result = await namespaceStub(nsId).commit(data, null, ent.limits.opsPerMonth);
+    context.span.set({ "tree.head": result.head, "ops.budget": ent.limits.opsPerMonth });
     return result;
   });
 

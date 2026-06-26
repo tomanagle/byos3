@@ -23,7 +23,7 @@ the billing code simple (`seats x price`, one entitlement set).
 | Devices | 1 | unlimited | planned (needs a device registry) |
 | Version history | 30 days | long / unlimited | planned (needs retention) |
 | Members / seats | just you | seat-based | partial (seats purchasable; org-invite flow pending) |
-| Operations | small monthly budget | fair-use rate limit | planned (Namespace DO guardrail) |
+| Operations (commits/mo) | small monthly budget | generous budget | **yes** - Namespace DO meters commits |
 
 There is **no AI feature** (an earlier draft of this table listed an "AI quota" - removed; `ai` exists
 only as unused authz vocabulary). The free tier is a **permanent, metered on-ramp, not a trial**.
@@ -54,9 +54,13 @@ uses the WebSocket **Hibernation API**, so idle live-sync sockets are near-free)
 - **Paid:** a generous fair-use rate limit, scaled by seats.
 
 This is the guardrail that makes a flat **$30/yr safe**: no account can cost more than roughly its
-plan's worth of Cloudflare requests. Enforced in the `Namespace` DO (the single writer = the natural
-op chokepoint): a per-namespace counter returns **HTTP 429** past the budget/rate. Read-only server
-fns use a KV/D1 counter or Cloudflare's Rate Limiting binding.
+plan's worth of Cloudflare requests. **Implemented** in the `Namespace` DO (the single writer = the
+natural op chokepoint): a per-namespace, per-UTC-month `usage` counter meters every successful
+**commit** (mutation) and rejects past the plan's `opsPerMonth` with `limit_exceeded` (**HTTP 402** -
+upgrade for more). The Worker (`fn/tree.ts treeCommit`) resolves the entitlement and passes the
+budget into `commit(op, actorDeviceId, opsBudget)`; `-1` = unlimited (paid). **v1 meters writes
+only** - reads (`sync`/`list`) and presigns aren't counted yet; a short-window rate limit (429) and
+read metering can be layered on later via a KV/D1 counter or the Rate Limiting binding.
 
 ## Disabled without a key
 

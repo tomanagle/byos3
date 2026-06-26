@@ -1,4 +1,4 @@
-import { applyOp, type Effect, type TreeNode, type TreeState } from "@byos3/core";
+import { AppError, applyOp, type Effect, type TreeNode, type TreeState } from "@byos3/core";
 import type { JournalEntry, JournalOp, NodeRecord } from "@byos3/protocol";
 import { DurableObject } from "cloudflare:workers";
 
@@ -60,7 +60,36 @@ export class Namespace extends DurableObject {
         refcount INTEGER NOT NULL,
         PRIMARY KEY (volumeId, hash)
       );
+      CREATE TABLE IF NOT EXISTS usage (
+        period TEXT PRIMARY KEY,   -- YYYY-MM (UTC); the cost-guardrail counter resets each month
+        ops INTEGER NOT NULL
+      );
     `);
+  }
+
+  // ── Operation budget (the Cloudflare-cost guardrail, billing.md) ─────────────────────────────────
+  // We meter mutating commits per UTC month and reject past the namespace's plan budget. The Worker
+  // resolves the entitlement (free vs paid) and passes the budget in; the DO is the single writer, so
+  // this counter is naturally per-namespace and race-free. budget < 0 means unlimited (paid).
+  #currentPeriod(): string {
+    return new Date().toISOString().slice(0, 7); // "2026-06"
+  }
+
+  #opsThisPeriod(): number {
+    const rows = this.#sql
+      .exec("SELECT ops FROM usage WHERE period = ?", this.#currentPeriod())
+      .toArray();
+    return rows.length ? Number(rows[0].ops) : 0;
+  }
+
+  #assertOpsBudget(budget: number): void {
+    if (budget < 0) return; // unlimited
+    if (this.#opsThisPeriod() >= budget) {
+      throw new AppError(
+        "limit_exceeded",
+        `monthly operation budget (${budget}) reached - upgrade for more`,
+      );
+    }
   }
 
   #loadTree(): void {
@@ -129,8 +158,15 @@ export class Namespace extends DurableObject {
   }
 
   /** Apply one op: validate against the live tree, append to the journal, materialize. Returns the
-   *  new head seq. Throws the applier's AppError (mapped to HTTP by the caller) on an invalid op. */
-  async commit(op: JournalOp, actorDeviceId: string | null = null): Promise<{ head: number }> {
+   *  new head seq. Throws the applier's AppError (mapped to HTTP by the caller) on an invalid op, or
+   *  `limit_exceeded` when the namespace is past its monthly operation budget (`opsBudget`; `-1` =
+   *  unlimited - the Worker passes the plan's budget, billing.md). */
+  async commit(
+    op: JournalOp,
+    actorDeviceId: string | null = null,
+    opsBudget = -1,
+  ): Promise<{ head: number }> {
+    this.#assertOpsBudget(opsBudget); // cost guardrail - reject before doing any work
     const seq = this.#tree.headSeq + 1;
     const { state, effects } = applyOp(this.#tree, op, seq); // throws on invalid → journal untouched
 
@@ -143,6 +179,11 @@ export class Namespace extends DurableObject {
         Date.now(),
       );
       for (const effect of effects) this.#persist(effect);
+      // Count this successful mutation against the month's budget (atomic with the journal append).
+      this.#sql.exec(
+        "INSERT INTO usage (period, ops) VALUES (?, 1) ON CONFLICT(period) DO UPDATE SET ops = ops + 1",
+        this.#currentPeriod(),
+      );
     });
 
     this.#tree = state;
