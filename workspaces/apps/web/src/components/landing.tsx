@@ -139,9 +139,18 @@ export function Landing() {
       </section>
 
       <footer className="relative z-10 border-t border-border/70">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 font-mono text-xs tracking-wide text-muted-foreground uppercase">
-          <span className="font-semibold text-foreground">byos3</span>
-          <span>your files, your bucket, your policies</span>
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-muted-foreground">
+          <span className="font-mono uppercase tracking-wide">
+            your files, your bucket, your rules
+          </span>
+          <nav className="flex items-center gap-4">
+            <Link to="/terms" className="hover:text-foreground">
+              Terms
+            </Link>
+            <Link to="/privacy" className="hover:text-foreground">
+              Privacy
+            </Link>
+          </nav>
         </div>
       </footer>
     </main>

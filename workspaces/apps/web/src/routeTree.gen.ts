@@ -9,8 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppVolumesRouteImport } from './routes/_app.volumes'
@@ -20,6 +22,11 @@ import { Route as ApiNsSocketRouteImport } from './routes/api/ns/socket'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as AppVolumesVolumeIdRouteImport } from './routes/_app.volumes.$volumeId'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignUpRoute = SignUpRouteImport.update({
   id: '/sign-up',
   path: '/sign-up',
@@ -28,6 +35,11 @@ const SignUpRoute = SignUpRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -72,8 +84,10 @@ const AppVolumesVolumeIdRoute = AppVolumesVolumeIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/terms': typeof TermsRoute
   '/keys': typeof AppKeysRoute
   '/volumes': typeof AppVolumesRouteWithChildren
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
@@ -82,8 +96,10 @@ export interface FileRoutesByFullPath {
   '/volumes/': typeof AppVolumesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/terms': typeof TermsRoute
   '/keys': typeof AppKeysRoute
   '/': typeof AppIndexRoute
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
@@ -94,8 +110,10 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
+  '/terms': typeof TermsRoute
   '/_app/keys': typeof AppKeysRoute
   '/_app/volumes': typeof AppVolumesRouteWithChildren
   '/_app/': typeof AppIndexRoute
@@ -108,8 +126,10 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/privacy'
     | '/sign-in'
     | '/sign-up'
+    | '/terms'
     | '/keys'
     | '/volumes'
     | '/volumes/$volumeId'
@@ -118,8 +138,10 @@ export interface FileRouteTypes {
     | '/volumes/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/privacy'
     | '/sign-in'
     | '/sign-up'
+    | '/terms'
     | '/keys'
     | '/'
     | '/volumes/$volumeId'
@@ -129,8 +151,10 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/privacy'
     | '/sign-in'
     | '/sign-up'
+    | '/terms'
     | '/_app/keys'
     | '/_app/volumes'
     | '/_app/'
@@ -142,14 +166,23 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
+  TermsRoute: typeof TermsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiNsSocketRoute: typeof ApiNsSocketRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sign-up': {
       id: '/sign-up'
       path: '/sign-up'
@@ -162,6 +195,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -253,8 +293,10 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,
+  TermsRoute: TermsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiNsSocketRoute: ApiNsSocketRoute,
 }
