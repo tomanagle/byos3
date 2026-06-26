@@ -10,7 +10,7 @@ import {
 
 test("prices are USD; annual = 10x monthly (2 months free)", () => {
   expect(CURRENCY).toBe("usd");
-  expect(PRICE_CENTS.monthly).toBe(600);
+  expect(PRICE_CENTS.monthly).toBe(300);
   expect(PRICE_CENTS.annual).toBe(PRICE_CENTS.monthly * 10);
 });
 

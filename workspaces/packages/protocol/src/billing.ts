@@ -9,8 +9,8 @@ export const CURRENCY = "usd";
 /** The single paid plan's Better Auth name + Stripe product key. */
 export const PLAN_NAME = "byos3";
 
-/** Per-seat price in cents. Annual = 10 months (2 free): $6/mo, $60/yr. */
-export const PRICE_CENTS = { monthly: 600, annual: 6000 } as const;
+/** Per-seat price in cents. Annual = 10 months (2 free): $3/mo, $30/yr. */
+export const PRICE_CENTS = { monthly: 300, annual: 3000 } as const;
 
 /** A plan's numeric limits. `-1` = unlimited (maps cleanly onto the Better Auth plan `limits`). */
 export interface PlanLimits {

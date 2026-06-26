@@ -13,8 +13,8 @@ WEBHOOK_PATH=/api/auth/stripe/webhook
 WEB_URL=http://web:4500
 
 # Amounts in cents, USD (mirror packages/protocol/src/billing.ts PRICE_CENTS).
-MONTHLY_CENTS=600
-ANNUAL_CENTS=6000
+MONTHLY_CENTS=300
+ANNUAL_CENTS=3000
 
 read_var() { sed -n "s/^$1=\"\{0,1\}\([^\"]*\)\"\{0,1\}.*/\1/p" "$DEV_VARS" 2>/dev/null | head -1; }
 

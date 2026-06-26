@@ -15,7 +15,7 @@ the billing code simple (`seats x price`, one entitlement set).
 
 | | Free | Paid |
 |---|---|---|
-| Price | **$0, permanent** | **$6 / seat / month** or **$60 / seat / year** (2 months free annual) |
+| Price | **$0, permanent** | **$3 / seat / month** or **$30 / seat / year** (2 months free annual) |
 | Volumes (mounted drives) | 1 | unlimited (fair use) |
 | Devices | 1 | unlimited |
 | Live sync | yes | yes |
@@ -48,7 +48,7 @@ uses the WebSocket **Hibernation API**, so idle live-sync sockets are near-free)
 - **Free:** a small monthly operation budget; soft-throttle past it.
 - **Paid:** a generous fair-use rate limit, scaled by seats.
 
-This is the guardrail that makes a flat **$60/yr safe**: no account can cost more than roughly its
+This is the guardrail that makes a flat **$30/yr safe**: no account can cost more than roughly its
 plan's worth of Cloudflare requests. Enforced in the `Namespace` DO (the single writer = the natural
 op chokepoint): a per-namespace counter returns **HTTP 429** past the budget/rate. Read-only server
 fns use a KV/D1 counter or Cloudflare's Rate Limiting binding.
@@ -60,6 +60,18 @@ plugin only when the key is present, so on a keyless deploy the `/api/auth/strip
 simply don't exist. The web client mirrors this: a `billingEnabled` flag (a server fn reading the
 env) hides the rail's Billing entry and shows a "billing not enabled" state on `/billing` instead of
 the upgrade flow. Everyone runs on the free limits; core file sync is unaffected.
+
+## Live provisioning (Pulumi)
+
+`infra/` provisions the **live** Stripe product, the **$3/mo + $30/yr USD** prices, and the webhook
+endpoint (`/api/auth/stripe/webhook` + the four events) via the `pulumi-stripe` provider - mirroring
+what `dev/stripe-setup.sh` does for the sandbox. It's skipped when no `stripeApiKey` (Pulumi config)
+/ `STRIPE_API_KEY` (env) is set. The stack exports `stripePriceMonthlyId`, `stripePriceAnnualId`,
+and the secret `stripeWebhookSecret`; the deploy workflow maps them to the web Worker's
+`STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_ANNUAL`, and `STRIPE_WEBHOOK_SECRET` (and sets
+`STRIPE_SECRET_KEY` from the GitHub secret). The price amount lives in **three** places that must
+stay in sync: `packages/protocol/src/billing.ts` (`PRICE_CENTS`), `dev/stripe-setup.sh`, and
+`infra/index.ts`.
 
 ## Configuration
 
@@ -75,8 +87,8 @@ stripe({
     plans: [
       {
         name: "byos3",
-        priceId: env.STRIPE_PRICE_MONTHLY, // $6 / seat / month
-        annualDiscountPriceId: env.STRIPE_PRICE_ANNUAL, // $60 / seat / year
+        priceId: env.STRIPE_PRICE_MONTHLY, // $3 / seat / month
+        annualDiscountPriceId: env.STRIPE_PRICE_ANNUAL, // $30 / seat / year
         limits: { volumes: 9999, devices: 9999, historyDays: 3650, ai: 5000, seats: true },
       },
     ],

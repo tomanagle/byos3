@@ -30,8 +30,10 @@ Billing runs on the **web** Worker only (Stripe Checkout + the webhook at
 
 **Local:** put only `STRIPE_SECRET_KEY` (your sandbox key) in `workspaces/apps/web/.dev.vars`; the
 `stripe` dev sidecar (`dev/stripe-setup.sh`) then ensures the product/prices exist in the sandbox and
-auto-fills the other three. **Prod:** set all four as GitHub secrets (the price IDs come from the
-live Stripe product Pulumi provisions - see `billing.md`).
+auto-fills the other three. **Prod:** `STRIPE_SECRET_KEY` is a GitHub secret; the price IDs +
+`STRIPE_WEBHOOK_SECRET` are produced by Pulumi (which provisions the live product/prices/webhook -
+`billing.md`) and wired in by the deploy workflow. Pulumi itself needs the **same live key** as
+`STRIPE_API_KEY` (config secret `stripeApiKey` or env) to talk to Stripe.
 
 **No `STRIPE_SECRET_KEY` means billing is disabled:** `createAuth` omits the Stripe plugin, the
 `/api/auth/stripe/*` endpoints don't exist, and the app hides the billing/upgrade UI. Core file sync
