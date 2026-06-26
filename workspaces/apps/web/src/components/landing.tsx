@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, GitBranch, KeyRound, Share2, Zap } from "lucide-react";
+import { getPublicConfig } from "#/fn/config";
 import { PROVIDERS } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
@@ -27,6 +29,12 @@ const FEATURES = [
 ];
 
 export function Landing() {
+  const { data: config } = useQuery({
+    queryKey: ["public-config"],
+    queryFn: () => getPublicConfig(),
+  });
+  const docsUrl = config?.docsUrl ?? "https://docs.byos3.com";
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
       {/* ambient glow */}
@@ -144,6 +152,9 @@ export function Landing() {
             your files, your bucket, your rules
           </span>
           <nav className="flex items-center gap-4">
+            <a href={docsUrl} className="hover:text-foreground">
+              Docs
+            </a>
             <Link to="/terms" className="hover:text-foreground">
               Terms
             </Link>
