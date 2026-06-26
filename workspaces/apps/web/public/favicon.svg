@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="byos3">
-  <!-- lime brand tile (matches --primary), dark isometric box = bring-your-own storage -->
+  <!-- lime brand tile (matches the primary token), dark isometric box = bring-your-own storage -->
   <rect width="32" height="32" rx="7" fill="#bef264" />
-  <path d="M16 2 L28.6 9 L16 16 L3.4 9 Z" fill="#28381b" />
-  <path d="M3.4 9 L16 16 L16 30 L3.4 23 Z" fill="#1a2711" />
-  <path d="M28.6 9 L16 16 L16 30 L28.6 23 Z" fill="#10180a" />
+  <path d="M16 6 L25 11 L16 16 L7 11 Z" fill="#28381b" />
+  <path d="M7 11 L16 16 L16 26 L7 21 Z" fill="#1a2711" />
+  <path d="M25 11 L16 16 L16 26 L25 21 Z" fill="#10180a" />
 </svg>

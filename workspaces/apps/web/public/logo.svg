@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="byos3">
+  <title>byos3</title>
+  <rect width="512" height="512" rx="112" fill="#bef264" />
+  <path d="M256 32 L457.6 144 L256 256 L54.4 144 Z" fill="#28381b" />
+  <path d="M54.4 144 L256 256 L256 480 L54.4 368 Z" fill="#1a2711" />
+  <path d="M457.6 144 L256 256 L256 480 L457.6 368 Z" fill="#10180a" />
+</svg>
