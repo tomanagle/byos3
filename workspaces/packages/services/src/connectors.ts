@@ -11,15 +11,19 @@ export interface ConnectResult {
 
 /**
  * Connect a bucket the caller owns: seal the secret, best-effort probe, persist a connector + a
- * default volume, and seed the caller as the `full` member of both (resource-level access - rbac.md).
+ * default volume, and seed the owner as the `full` member of both (resource-level access - rbac.md).
  * Connecting your own credential needs no prior authorization; the `namespaceId` is the volume's
- * sync/DO home (storage), not its access boundary. Shared by the web (session) and api (key) transports.
+ * sync/DO home (storage), not its access boundary. Shared by the web (session) and api (key)
+ * transports - for an org-owned key the namespace is the key's own, and `principal.userId` is the
+ * namespace owner (set by the api composition root), so the resource is attributed to them.
  */
 export async function connectBucket(
   ctx: ServiceContext,
   input: ConnectBucketInput,
 ): Promise<ConnectResult> {
-  const namespaceId = await ctx.memberships.primaryNamespaceId(ctx.principal.userId);
+  const namespaceId =
+    ctx.principal.keyNamespaceId ??
+    (await ctx.memberships.primaryNamespaceId(ctx.principal.userId));
   if (!namespaceId) throw new AppError("forbidden", "no namespace");
 
   const secretCipher = await ctx.vault.seal(input.secret);

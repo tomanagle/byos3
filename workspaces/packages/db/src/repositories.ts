@@ -73,6 +73,15 @@ export class D1VolumeRepository implements VolumeRepository {
       .where(eq(volumeTbl.namespaceId, namespaceId));
     return rows.map((r) => VolumeRecord.parse(r));
   }
+
+  async namespaceOf(volumeId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ namespaceId: volumeTbl.namespaceId })
+      .from(volumeTbl)
+      .where(eq(volumeTbl.id, volumeId))
+      .limit(1);
+    return rows.length ? rows[0].namespaceId : null;
+  }
 }
 
 export class D1MembershipRepository implements MembershipResolver {
@@ -94,6 +103,15 @@ export class D1MembershipRepository implements MembershipResolver {
       .where(eq(memberTbl.userId, userId))
       .limit(1);
     return rows.length ? rows[0].organizationId : null;
+  }
+
+  async namespaceOwner(namespaceId: string): Promise<string | null> {
+    const rows = await this.db
+      .select({ userId: memberTbl.userId })
+      .from(memberTbl)
+      .where(and(eq(memberTbl.organizationId, namespaceId), eq(memberTbl.role, "owner")))
+      .limit(1);
+    return rows.length ? rows[0].userId : null;
   }
 }
 

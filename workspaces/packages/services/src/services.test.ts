@@ -46,6 +46,7 @@ function ctxFor(principal: Principal, role: string | null): ServiceContext {
   const memberships: MembershipResolver = {
     roleFor: async () => null,
     primaryNamespaceId: async () => "ns_1",
+    namespaceOwner: async () => "u1",
   };
   const access: ResourceAccessRepository = {
     volumeRoleFor: async () => role as never,
@@ -60,7 +61,12 @@ function ctxFor(principal: Principal, role: string | null): ServiceContext {
   return {
     principal,
     connectors: { get: async () => connector, insert: async () => {} },
-    volumes: { get: async () => volume, insert: async () => {}, listByNamespace: async () => [] },
+    volumes: {
+      get: async () => volume,
+      insert: async () => {},
+      listByNamespace: async () => [],
+      namespaceOf: async () => volRecord.namespaceId,
+    },
     memberships,
     access,
     vault,
@@ -97,5 +103,57 @@ test("an API key without file:create scope is denied even with read_write", asyn
   const principal: Principal = { userId: "u1", keyScopes: { file: ["read"] } };
   await expect(
     uploadIntent(ctxFor(principal, "read_write"), { volumeId: "vol_1", hash: "a".repeat(64) }),
+  ).rejects.toBeInstanceOf(AppError);
+});
+
+test("an org-owned key authorizes by namespace, not a volume role", async () => {
+  // keyNamespaceId matches the volume's namespace + the scope permits it -> allowed even though the
+  // (per-user) volume role is null. This is the org-credential path.
+  const principal: Principal = {
+    userId: "owner",
+    keyNamespaceId: "ns_1",
+    keyScopes: { file: ["create", "read"] },
+  };
+  const req = await uploadIntent(ctxFor(principal, null), {
+    volumeId: "vol_1",
+    hash: "a".repeat(64),
+  });
+  expect(req.method).toBe("PUT");
+});
+
+test("an org-owned key from a DIFFERENT namespace is denied", async () => {
+  const principal: Principal = {
+    userId: "owner",
+    keyNamespaceId: "ns_other",
+    keyScopes: { file: ["create"] },
+  };
+  await expect(
+    uploadIntent(ctxFor(principal, "full"), { volumeId: "vol_1", hash: "a".repeat(64) }),
+  ).rejects.toBeInstanceOf(AppError);
+});
+
+test("a key volume-scoped to the target volume is allowed", async () => {
+  const principal: Principal = {
+    userId: "owner",
+    keyNamespaceId: "ns_1",
+    keyScopes: { file: ["create"] },
+    keyVolumeScope: ["vol_1"],
+  };
+  const req = await uploadIntent(ctxFor(principal, null), {
+    volumeId: "vol_1",
+    hash: "a".repeat(64),
+  });
+  expect(req.method).toBe("PUT");
+});
+
+test("a key volume-scoped to OTHER volumes is denied even in the right namespace", async () => {
+  const principal: Principal = {
+    userId: "owner",
+    keyNamespaceId: "ns_1",
+    keyScopes: { file: ["create"] },
+    keyVolumeScope: ["vol_other"],
+  };
+  await expect(
+    uploadIntent(ctxFor(principal, null), { volumeId: "vol_1", hash: "a".repeat(64) }),
   ).rejects.toBeInstanceOf(AppError);
 });

@@ -41,41 +41,53 @@ API is a Hono app, the web is a TanStack Start app, and neither's framework leak
 | Best for | browsers | scripts, CI, integrations, the future desktop daemon |
 
 Each Worker's **composition root** resolves its credential into a `Principal { userId, platformRole?,
-keyScopes? }` and builds a `ServiceContext` (`code-architecture.md`):
+keyScopes?, keyNamespaceId?, keyVolumeScope? }` and builds a `ServiceContext` (`code-architecture.md`):
 
 - **`apps/web`** (`ctx.ts`) calls `auth.api.getSession({ headers })` → session user → `Principal`
-  (no `keyScopes` → full role).
+  (no `keyScopes`/`keyNamespaceId` → authorized by the user's role).
 - **`apps/api`** (`auth` middleware) reads `Authorization: Bearer <key>` and validates it with Better
-  Auth's `auth.api.verifyApiKey({ body: { key } })` (same D1 auth tables) → owner user + the key's
-  `permissions` → `Principal` **with `keyScopes`**.
+  Auth's `auth.api.verifyApiKey({ body: { key } })` (same D1 auth tables). Keys are **org-owned**, so
+  the verified key's `referenceId` **is the namespace** → `Principal` with **`keyNamespaceId`** (the
+  authorization scope), **`keyScopes`** (the key's `permissions`), **`keyVolumeScope`** (from the
+  key's metadata), and `userId` set to that **namespace's owner** (used only to attribute resources a
+  key creates, never to authorize).
 
-Downstream is then **identical**: the `Principal` flows into `@byos3/services`, where `assertCan`
-runs the same RBAC check (`rbac.md`) and additionally intersects `keyScopes` when present. Sessions
-stay the browser path because exposing a long-lived bearer token to a browser is strictly worse than
-an httpOnly, CSRF-protected cookie.
+Downstream both flow into `@byos3/services`, but the two principals authorize **differently**: a
+session is checked against the user's **org/resource role** (`rbac.md`); an org-key is **namespace-
+scoped** - it may act on its `keyNamespaceId` and every volume in it, with **no user-role lookup** -
+and the action must additionally fall within `keyScopes` (and, for file ops, `keyVolumeScope`).
+Sessions stay the browser path because exposing a long-lived bearer token to a browser is strictly
+worse than an httpOnly, CSRF-protected cookie.
 
 ## API key management (Better Auth `apiKey` plugin)
 
-Register `apiKey()` (server) + `apiKeyClient()` (client) alongside the organization/admin/stripe
-plugins (`auth.md`). Users create/list/rotate/revoke keys **in the web UI and via `/api/v1`**
-(dogfooding the API). Properties (all backed by the plugin):
+Register `apiKey({ references: "organization", enableMetadata: true })` (server) + `apiKeyClient()`
+(client) alongside the organization/admin/stripe plugins (`auth.md`). Keys are **owned by the
+organization (namespace), not the user**: `references: "organization"` makes the key's `referenceId`
+the org id, so any owner/admin of the org can list + revoke it and a key **outlives the member who
+minted it**. The web manages them via server functions (`fn/api-keys.ts`: `list/create/update/
+delete`, each scoped to the caller's `namespaceId`); the same is available via `/api/v1`. Properties:
 
 - **Shown once, hashed at rest**, identified by a non-secret **prefix** (safe to log for audit).
 - **Expiry** (`expiresIn`), **per-key rate limits** (`rateLimitMax`/`rateLimitTimeWindow`),
-  **usage quota** (`remaining` + `refill`), arbitrary **metadata**, and **`permissions`** (scopes).
-- Ownership is the user; a key may be **restricted to specific namespaces** via metadata.
+  **usage quota** (`remaining` + `refill`), and **`permissions`** (scopes).
+- **Volume scope** (`metadata.volumes`: `"*"` or a list of volume ids) limits the key's FILE
+  operations to specific volumes; `"*"`/absent = every volume in the org. Set at create time and
+  only meaningful when the key has `file:*` scopes.
 
-## Key scopes compose with RBAC (least privilege)
+## Key scopes are namespace-scoped + least privilege
 
 A key's **`permissions`** use the **same `resource: [actions]` vocabulary** as our access-control
-statements (`@byos3/core/authz`: `file`, `volume`, `share`, `ai`, `member`, …). The **effective
-permission for an API-key request = intersection( the user's RBAC permission in that namespace , the
-key's scopes )**. Therefore:
+statements (`@byos3/core/authz`: `file`, `volume`, `share`, `ai`, `member`, …). Because keys are org
+credentials, an API-key request is authorized by its **namespace**, not a user role:
 
-- A key can **never exceed its owner's role** - it can only *narrow* it.
-- A read-only CI key = `{ file: ["read"], ai: ["query"] }`; a backup key scoped to one namespace; etc.
-- `authorize()` takes an optional **`keyScopes`**; when the request is key-authenticated, the action
-  must pass the role/grant check **and** the key scope. (Sessions have no `keyScopes` → full role.)
+- The action's resource/volume must belong to the key's `keyNamespaceId` (a key from another org is
+  denied), the action must be within the key's **`keyScopes`**, and a file op must target a volume in
+  the key's **`keyVolumeScope`**. No per-user role lookup happens for key callers.
+- A read-only CI key = `{ file: ["read"], volume: ["list"] }`; a backup key restricted to one volume
+  via its volume scope; etc. A key only ever *narrows* what the org can do.
+- `assertCan*` (`@byos3/services`) branches on `keyNamespaceId`: present → namespace check + scope
+  intersection; absent (sessions) → the user's role/grant check.
 
 ## Parity: the full file lifecycle via the API
 
@@ -101,7 +113,8 @@ ARE the schemas that generate the docs (one source, no drift). The shape mirrors
   **`@byos3/services`** use-case via static import, and returns. **No business logic, no dynamic imports.**
 - **Errors** are Stripe-shaped: a typed `ApiError` (+ `API_ERROR_CODES`); the error handler maps
   `@byos3/core` `AppError` and `ZodError` onto it, always with a `requestId`. Authorization stays in
-  the service (`assertCan` = role ∩ keyScopes) - the edge does not duplicate scope checks.
+  the service (`assertCan*` = namespace ∩ keyScopes ∩ keyVolumeScope for keys) - the edge does not
+  duplicate scope checks.
 
 ## Web data access (server functions, not the API Worker)
 
@@ -123,16 +136,23 @@ public API is never on the UI's hot path.
 
 ## OpenAPI & docs
 
-`app.doc("/openapi.json", …)` serves the spec generated from the route schemas; `/docs` renders it
-inline with **Scalar** (same-origin "Try It" - handy hitting the Worker directly).
+`app.doc("/openapi.json", c => …)` serves the spec generated from the route schemas; `/docs` renders
+it inline with **Scalar**. The doc uses the **function form** so `servers` is the request origin -
+`https://api.<domain>` in prod, `http://localhost:8788` in dev - so the documented API base URL is
+always correct and same-origin "Try It" works against the Worker directly.
+
+`GET /healthz` is a documented (`tags: ["System"]`), unauthenticated liveness route returning
+`200 {"status":"ok"}` - it's an `app.openapi(...)` route, so it shows in the reference like any other.
 
 The **public reference site lives at `docs.<APP_DOMAIN>`** (e.g. docs.byos3.com), built from that
 same spec - one source, no drift:
 
-- `scripts/build-docs.ts` (`bun run docs:build`) imports the Hono app, pulls `/openapi.json`, and
-  writes a self-contained `dist-docs/index.html` (Scalar via CDN, spec inlined) + `dist-docs/openapi.json`.
-  It sets Scalar's `baseServerURL` to `https://api.<APP_DOMAIN>` so "Try It" on the cross-origin docs
-  site targets the real API (override with `DOCS_BASE_SERVER_URL`, as the local docs container does).
+- `scripts/build-docs.ts` (`bun run docs:build`) imports the Hono app, pulls `/openapi.json`, stamps
+  the version from the root `package.json`, and writes a self-contained `dist-docs/index.html` (Scalar
+  via CDN, spec inlined) + `dist-docs/openapi.json`. Because the docs site is a different origin from
+  the API, it **overrides `servers`** to `https://api.<APP_DOMAIN>` (from the `APP_DOMAIN` deploy var)
+  so the reference shows the real backend and "Try It" targets it; the local docs container overrides
+  it again to the local API via `DOCS_BASE_SERVER_URL`.
 - `bun run docs:deploy` builds, then deploys `wrangler.docs.jsonc` - a **static-assets-only Worker**
   (`byos3-docs`, no `main`) whose `custom_domain` route provisions DNS + TLS for `docs.<APP_DOMAIN>`,
   exactly like web/api. CI runs this on every deploy (`deployment.md`); locally the `docs` container

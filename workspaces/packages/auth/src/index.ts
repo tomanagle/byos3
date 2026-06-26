@@ -110,9 +110,14 @@ export function createAuth(opts: CreateAuthOptions) {
         defaultRole: "user",
         adminRoles: ["admin"],
       }),
-      // Programmatic auth. A key's `permissions` (Record<resource, actions[]>) become the request's
-      // keyScopes, intersected with the owner's role in @byos3/services. Default header: x-api-key.
-      apiKey(),
+      // Programmatic auth. Keys are OWNED BY THE ORGANIZATION (`references: "organization"`), so a
+      // key's `referenceId` is the namespace/org id, not a user - any org admin can list/revoke it
+      // and it outlives the member who minted it. A key's `permissions` (Record<resource, actions[]>)
+      // become the request's keyScopes; the api Worker authorizes them against the key's NAMESPACE
+      // (not a user role) - see @byos3/services authz + api.md. `metadata` carries the key's volume
+      // scope (`{ volumes: "*" | string[] }`) so file ops can be limited to specific volumes (api.md).
+      // Default header: x-api-key.
+      apiKey({ references: "organization", enableMetadata: true }),
       // Billing (Stripe). Mounts /api/auth/stripe/* incl. the webhook. Omitted without a key.
       ...(stripe ? [stripe] : []),
     ],

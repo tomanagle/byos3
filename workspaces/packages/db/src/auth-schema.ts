@@ -91,8 +91,9 @@ export const invitation = sqliteTable("invitation", {
 
 // apiKey plugin. `key` is the hashed secret (never the plaintext); `permissions` is a JSON
 // `Record<resource, actions[]>` that becomes the request's keyScopes (api.md, rbac.md).
-// `referenceId` is the owning user (the plugin generalized `userId` → `referenceId` so a key may
-// reference a user or an organization); `configId` scopes the key to a plugin configuration.
+// `referenceId` is the owning **organization/namespace** id - keys are org-owned
+// (`references: "organization"`, see @byos3/auth), so they outlive the member who minted them and
+// the api Worker authorizes them against that namespace. `configId` scopes the key to a config.
 export const apikey = sqliteTable("apikey", {
   id: text("id").primaryKey(),
   configId: text("config_id").notNull().default("default"),

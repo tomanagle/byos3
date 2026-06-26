@@ -19,12 +19,15 @@ interface VerifiedKey {
   id: string;
   referenceId: string;
   permissions: Record<string, string[]> | null;
+  metadata: { volumes?: "*" | string[] } | null;
 }
 
 /**
  * Authentication at the edge: `Authorization: Bearer <key>` → Better Auth `verifyApiKey` → a
- * `ServiceContext` whose principal carries the key's `permissions` as keyScopes. Authorization
- * itself stays in `@byos3/services` (`assertCan` intersects scopes ∩ role). See agents/docs/api.md.
+ * `ServiceContext`. Keys are org-owned, so the verified key's `referenceId` is the **namespace** the
+ * key belongs to: we put it on the principal as `keyNamespaceId` (authorization is namespace-scoped
+ * in `@byos3/services`, never a user-role lookup) and set `userId` to that namespace's owner purely
+ * so resource creation can attribute an owner. The key's `permissions` become keyScopes. See api.md.
  */
 export function authMiddleware(): MiddlewareHandler<ApiContext> {
   return async (c, next) => {
@@ -53,13 +56,30 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
 
     const key = result.key as unknown as VerifiedKey;
     const scopes = key.permissions ?? null;
+    // Keys are org-owned: referenceId IS the namespace. Resolve its owner for resource attribution.
+    const namespaceId = key.referenceId;
+    const memberships = new D1MembershipRepository(db);
+    const ownerUserId = await memberships.namespaceOwner(namespaceId);
+    if (!ownerUserId) {
+      throw new ApiError({
+        type: "authentication_error",
+        code: "invalid_api_key",
+        message: "API key references a namespace with no owner.",
+        status: 401,
+      });
+    }
     const vault = new CredentialVault(c.env.CREDENTIAL_ENCRYPTION_KEY);
     const connectors = new D1ConnectorRepository(db, vault, createDriver);
     const ctx: ServiceContext = {
-      principal: { userId: key.referenceId, keyScopes: scopes ?? undefined },
+      principal: {
+        userId: ownerUserId,
+        keyNamespaceId: namespaceId,
+        keyScopes: scopes ?? undefined,
+        keyVolumeScope: key.metadata?.volumes,
+      },
       connectors,
       volumes: new D1VolumeRepository(db, connectors),
-      memberships: new D1MembershipRepository(db),
+      memberships,
       access: new D1ResourceAccessRepository(db),
       vault,
       driverFactory: createDriver,
@@ -69,7 +89,7 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
     c.set("scopes", scopes);
 
     const span = c.get("span");
-    span.set({ "api.key.id": key.id, "api.user.id": key.referenceId });
+    span.set({ "api.key.id": key.id, "api.namespace.id": namespaceId });
 
     await next();
   };

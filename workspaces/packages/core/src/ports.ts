@@ -22,12 +22,16 @@ export interface VolumeRepository {
   get(id: string): Promise<Volume>;
   insert(record: VolumeRecord): Promise<void>;
   listByNamespace(namespaceId: string): Promise<VolumeRecord[]>;
+  /** The volume's owning namespace id, without opening its connector. For namespace-scoped authz. */
+  namespaceOf(volumeId: string): Promise<string | null>;
 }
 
 /** Resolves a user's role in a namespace (backed by the Better Auth `member` table). */
 export interface MembershipResolver {
   roleFor(userId: string, namespaceId: string): Promise<Role | null>;
   primaryNamespaceId(userId: string): Promise<string | null>;
+  /** The owner member's userId for a namespace - resource attribution for org-key callers (api.md). */
+  namespaceOwner(namespaceId: string): Promise<string | null>;
 }
 
 export interface ResourceMember {

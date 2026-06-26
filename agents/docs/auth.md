@@ -7,11 +7,13 @@ Authentication is **Better Auth**, running in the same Worker as the app, backed
 - Better Auth mounted as a catch-all API route in `apps/web` (`/api/auth/*`), handled inside the
   TanStack Start Worker. Plugins registered here: **organization** (multi-tenant RBAC; namespace ≡
   organization), **admin** (platform roles + impersonation), **apiKey** (programmatic access - byos3
-  is API-first), and **stripe** (subscriptions). RBAC: `rbac.md`; billing: `billing.md`; API: `api.md`.
-- **Two authentication methods, one authorization model:** a **session** cookie (web) or an **API
-  key** (programmatic, `x-api-key`) both resolve - via a unified middleware - to one `Principal` that
-  flows through RBAC. The apiKey plugin can derive a session from a key, so downstream checks are
-  identical. See `api.md`. (`/api/v1` + unified auth = Phase 1; API key issuance + OpenAPI = Phase 2.)
+  is API-first; `references: "organization"` so keys are **org-owned**, `enableMetadata: true` for
+  per-key volume scope), and **stripe** (subscriptions). RBAC: `rbac.md`; billing: `billing.md`; API:
+  `api.md`.
+- **Two authentication methods, two authorization paths:** a **session** cookie (web) or an **API
+  key** (programmatic, `Bearer`) each resolve to a `Principal`. A session is authorized by the user's
+  org role; an org-owned key is authorized by its **namespace** (`keyNamespaceId`) + its scopes, with
+  no user-role lookup. See `api.md`. (`/api/v1` + unified auth = Phase 1; API key issuance = Phase 2.)
 - D1 adapter (via Drizzle). Sessions cached in **KV** for fast edge reads.
 - Secrets: `BETTER_AUTH_SECRET`, OAuth provider credentials, plus the Stripe secrets used by the
   billing plugin. Stored as Wrangler secrets (never committed).

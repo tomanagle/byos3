@@ -105,13 +105,35 @@ export const VolumeObjectKeyInput = z.object({
 });
 export type VolumeObjectKeyInput = z.infer<typeof VolumeObjectKeyInput>;
 
-/** Mint a scoped API key for the signed-in user (web `createApiKey` server fn). */
+/**
+ * Which volumes a key's FILE operations apply to: `"*"` (every volume in the org) or an explicit
+ * list of volume ids. Only meaningful when the key has `file:*` permissions. Stored in the key's
+ * metadata and enforced by the api Worker (api.md).
+ */
+export const ApiKeyVolumeScope = z.union([z.literal("*"), z.array(z.string().min(1))]);
+export type ApiKeyVolumeScope = z.infer<typeof ApiKeyVolumeScope>;
+
+/** Mint a scoped API key for the caller's organization (web `createApiKey` server fn). */
 export const ApiKeyCreateInput = z.object({
   name: z.string().min(1).max(120).optional(),
   permissions: z.record(z.string(), z.array(z.string())).optional(),
   expiresIn: z.number().int().positive().optional(),
+  /** Volume scope for file ops; `"*"` = all volumes. Ignored when the key has no file permissions. */
+  volumes: ApiKeyVolumeScope.optional(),
 });
 export type ApiKeyCreateInput = z.infer<typeof ApiKeyCreateInput>;
+
+/** Reference an existing org-owned key by id (web `deleteApiKey` server fn). */
+export const ApiKeyIdInput = z.object({ keyId: z.string().min(1) });
+export type ApiKeyIdInput = z.infer<typeof ApiKeyIdInput>;
+
+/** Mutate an existing org-owned key: rename and/or enable/disable (web `updateApiKey` server fn). */
+export const ApiKeyUpdateInput = z.object({
+  keyId: z.string().min(1),
+  name: z.string().min(1).max(120).optional(),
+  enabled: z.boolean().optional(),
+});
+export type ApiKeyUpdateInput = z.infer<typeof ApiKeyUpdateInput>;
 
 // ── Resource sharing inputs ──────────────────────────────────────────────────
 // Wire contract for inviting users to a volume. `ShareRole` mirrors core's `RESOURCE_ROLES`

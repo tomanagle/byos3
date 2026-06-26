@@ -53,9 +53,19 @@ export interface VolumeSummary {
   role?: string;
 }
 
-/** List the volumes the caller can access (owned or shared with them), with provider + their role. */
+/**
+ * List the caller's volumes, with provider + role. A session lists the volumes shared with the user
+ * (with their per-volume role); an org-owned API key lists EVERY volume in its namespace (the key is
+ * an org credential, so its role on each is `full`, subject to the key's scopes). See api.md.
+ */
 export async function listVolumes(ctx: ServiceContext): Promise<VolumeSummary[]> {
-  const records = await ctx.access.listAccessibleVolumes(ctx.principal.userId);
+  const keyNs = ctx.principal.keyNamespaceId;
+  let records = keyNs
+    ? await ctx.volumes.listByNamespace(keyNs)
+    : await ctx.access.listAccessibleVolumes(ctx.principal.userId);
+  // A volume-restricted key only sees the volumes it is scoped to (absent / "*" = all). See api.md.
+  const vols = ctx.principal.keyVolumeScope;
+  if (keyNs && Array.isArray(vols)) records = records.filter((r) => vols.includes(r.id));
   return Promise.all(
     records.map(async (r) => {
       let provider: ProviderId | undefined;
@@ -64,7 +74,9 @@ export async function listVolumes(ctx: ServiceContext): Promise<VolumeSummary[]>
       } catch {
         // connector removed - leave provider undefined; the UI falls back to a neutral identity.
       }
-      const role = (await ctx.access.volumeRoleFor(ctx.principal.userId, r.id)) ?? undefined;
+      const role = keyNs
+        ? "full"
+        : ((await ctx.access.volumeRoleFor(ctx.principal.userId, r.id)) ?? undefined);
       return { id: r.id, label: r.label, bucket: r.bucket, prefix: r.prefix, provider, role };
     }),
   );

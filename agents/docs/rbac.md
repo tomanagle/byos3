@@ -165,9 +165,12 @@ specific connector/volume; access is decided by that role, independent of any na
   resource and its members - admin). Built from the same AC statement vocabulary via `resourceCan`.
 - **Enforcement**: `@byos3/services` `assertCanVolume(ctx, volumeId, action)` /
   `assertCanConnector(...)` resolve the caller's resource role (`ResourceAccessRepository`) and call
-  `resourceCan`; for API keys the action must ALSO be within the key scope (intersection - still
-  narrows). `listVolumes` returns the volumes the caller is a member of. Managing members
-  (`shareVolume`/`unshareVolume`) requires `full`.
+  `resourceCan`. **Org-owned API keys** skip the per-user role: a key principal carries
+  `keyNamespaceId`, so `assertCanVolume` instead checks the volume lives in the key's namespace and
+  (for file ops) within the key's `keyVolumeScope`, ALSO intersected with the key scope. `listVolumes`
+  returns the caller's member volumes for a session, or every volume in the namespace (filtered by the
+  key's volume scope) for an org key. Managing members (`shareVolume`/`unshareVolume`) requires `full`
+  and is session-only (`assertCanConnector` denies key callers - connectors are not namespace-scoped).
 - **Storage vs access**: a volume keeps a `namespaceId` - its **sync/DO home** (where its journal
   lives) - but that is *storage*, not the access boundary. Access is the resource role.
 
@@ -224,10 +227,12 @@ Worker-asserted principal - same security domain; the client never calls the DO 
 WebSocket connections are authorized at **upgrade** in the Worker and the principal is bound to the
 socket (`serializeAttachment`), so the DO authorizes each WS message too.
 
-**Two auth methods, one model.** A request is authenticated by a **session** (web) or an **API key**
-(programmatic) - both resolve to the same `Principal` (`api.md`). For an API-key request, `authorize()`
-also takes the key's **`keyScopes`**, and the action must pass the role/grant check **and** the key
-scope (intersection). A key can only *narrow* its owner's permissions, never exceed them. API key
+**Two auth methods, two authorization paths.** A request is authenticated by a **session** (web) or
+an **API key** (programmatic), both resolving to a `Principal` (`api.md`). A session is authorized by
+the user's **org/resource role**. An API key is **org-owned**, so it is authorized by its
+**namespace** (`keyNamespaceId`): the resource must belong to that namespace, the action must be
+within the key's **`keyScopes`**, and a file op must target a volume in the key's **`keyVolumeScope`**
+- no per-user role lookup. A key only ever *narrows* what the org can do, never exceeds it. API key
 `permissions` use the same `resource: [actions]` vocabulary as the statements above.
 
 ## Better Auth wiring & checks
