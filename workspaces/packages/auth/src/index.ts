@@ -33,6 +33,8 @@ export interface CreateAuthOptions {
     priceMonthly?: string;
     priceAnnual?: string;
   };
+  /** GitHub OAuth (only enabled when both id + secret are set). Callback: /api/auth/callback/github. */
+  github?: { clientId?: string; clientSecret?: string };
 }
 
 /**
@@ -75,11 +77,17 @@ function buildStripe(opts: CreateAuthOptions): BetterAuthPlugin | null {
 
 export function createAuth(opts: CreateAuthOptions) {
   const stripe = buildStripe(opts);
+  // GitHub OAuth, only when both credentials are present (otherwise email/password only).
+  const socialProviders =
+    opts.github?.clientId && opts.github.clientSecret
+      ? { github: { clientId: opts.github.clientId, clientSecret: opts.github.clientSecret } }
+      : undefined;
   return betterAuth({
     secret: opts.secret,
     baseURL: opts.baseURL,
     database: drizzleAdapter(opts.db, { provider: "sqlite", schema }),
     emailAndPassword: { enabled: true },
+    socialProviders,
     trustedOrigins: opts.trustedOrigins ?? [],
     plugins: [
       // Namespace ≡ organization. Member roles (owner/admin/writer/reader) authorize tenant content.

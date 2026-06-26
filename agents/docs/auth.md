@@ -16,6 +16,21 @@ Authentication is **Better Auth**, running in the same Worker as the app, backed
 - Secrets: `BETTER_AUTH_SECRET`, OAuth provider credentials, plus the Stripe secrets used by the
   billing plugin. Stored as Wrangler secrets (never committed).
 
+## Social login (GitHub OAuth)
+
+Enabled **only when both `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are set** - `createAuth` adds
+the `github` social provider conditionally, otherwise it's email/password only. The sign-in/up pages
+show a "Continue with GitHub" button gated by the `githubOAuth` flag from `getPublicConfig`
+(`fn/config.ts`); the client starts the flow with
+`authClient.signIn.social({ provider: "github", callbackURL: "/" })`.
+
+**Authorization callback URL** (register it in the GitHub OAuth App): `{baseURL}/api/auth/callback/github`.
+- Local: `http://localhost:4500/api/auth/callback/github`
+- Prod: `https://<app-domain>/api/auth/callback/github`
+
+A GitHub **OAuth App** allows a single callback URL, so use **separate apps for local and prod**.
+Credentials live in `secrets.md`.
+
 ## Tables (Better Auth-owned, in D1)
 
 Better Auth owns `user`, `session`, `account`, `verification`, plus - via the **organization

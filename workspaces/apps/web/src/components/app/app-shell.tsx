@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Outlet, useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { createContext, useContext, useMemo, useState } from "react";
 import type { Me } from "#/fn/auth";
-import { getBillingEnabled } from "#/fn/config";
+import { getPublicConfig } from "#/fn/config";
 import { listVolumes } from "#/fn/volumes";
 import { ConnectDialog } from "./connect-dialog";
 import { Topbar } from "./topbar";
@@ -51,12 +51,12 @@ function viewFor(pathname: string): View {
 export function AppShell({ me }: { me: Me }) {
   const volumesQuery = useQuery({ queryKey: ["volumes"], queryFn: () => listVolumes() });
   const volumes = volumesQuery.data ?? [];
-  const billing = useQuery({
-    queryKey: ["billing-enabled"],
-    queryFn: () => getBillingEnabled(),
+  const config = useQuery({
+    queryKey: ["public-config"],
+    queryFn: () => getPublicConfig(),
     staleTime: Number.POSITIVE_INFINITY,
   });
-  const billingEnabled = billing.data ?? false;
+  const billingEnabled = config.data?.billingEnabled ?? false;
   const params = useParams({ strict: false }) as { volumeId?: string };
   const location = useLocation();
   const navigate = useNavigate();

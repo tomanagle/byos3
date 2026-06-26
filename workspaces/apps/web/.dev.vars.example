@@ -18,3 +18,9 @@ STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_PRICE_MONTHLY=
 STRIPE_PRICE_ANNUAL=
+
+# GitHub OAuth (optional - leave blank to use email/password only). Create an OAuth App at
+# github.com/settings/developers with callback http://localhost:4500/api/auth/callback/github.
+# Both must be set to enable the "Continue with GitHub" button. See agents/docs/auth.md.
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=

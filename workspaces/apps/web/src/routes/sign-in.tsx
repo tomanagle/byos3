@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { AuthShell } from "#/components/auth-shell";
+import { GithubButton } from "#/components/github-button";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
@@ -42,6 +43,7 @@ function SignIn() {
         </>
       }
     >
+      <GithubButton callbackURL="/" />
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
