@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { Footer } from "#/components/footer";
 
 /** Simple, public, readable layout for policy pages (terms, privacy). */
 export function LegalPage({
@@ -12,8 +13,8 @@ export function LegalPage({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
+    <main className="flex min-h-screen flex-col bg-background text-foreground">
+      <header className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-5">
         <Link to="/" className="font-display text-lg font-semibold tracking-tight">
           byos<span className="text-primary">3</span>
         </Link>
@@ -21,13 +22,14 @@ export function LegalPage({
           Home
         </Link>
       </header>
-      <article className="mx-auto max-w-3xl px-6 pb-20">
+      <article className="mx-auto w-full max-w-3xl flex-1 px-6 pb-20">
         <h1 className="font-display text-4xl font-bold tracking-tight text-balance">{title}</h1>
         <p className="mt-2 text-base text-muted-foreground">Last updated {updated}</p>
         <div className="mt-8 flex flex-col gap-6 text-base leading-relaxed text-foreground/90">
           {children}
         </div>
       </article>
+      <Footer />
     </main>
   );
 }
