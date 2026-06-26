@@ -29,6 +29,8 @@ concurrency:
 #     PULUMI_CONFIG_PASSPHRASE    passphrase that encrypts secrets inside the Pulumi state (any strong string)
 #     BETTER_AUTH_SECRET          random 32+ char string  (openssl rand -base64 32)
 #     CREDENTIAL_ENCRYPTION_KEY   32-byte base64 key       (openssl rand -base64 32)
+#     STRIPE_SECRET_KEY           (optional) LIVE Stripe key - enables billing: Pulumi provisions the
+#                                 product/prices/webhook and the web Worker runs Checkout. Unset = off.
 #   Variables:
 #     APP_DOMAIN                  your apex domain, e.g. example.com  (the zone must exist in your CF account)
 #     PULUMI_STACK                stack name (optional, default `production`)
@@ -61,6 +63,11 @@ jobs:
       APP_VERSION: ${{ github.ref_name }}
       BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
       CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
+      # Billing (optional). ONE live Stripe key drives both sides: Pulumi reads it as STRIPE_API_KEY to
+      # provision the product/prices/webhook, and the web Worker gets it as STRIPE_SECRET_KEY at runtime.
+      # Unset = billing stays disabled (Pulumi skips Stripe, the Stripe Worker secrets aren't set).
+      STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+      STRIPE_API_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -78,6 +85,11 @@ jobs:
         run: bunx wrangler r2 bucket create "$PULUMI_STATE_BUCKET" || echo "(state bucket already exists)"
       - name: Pulumi up
         uses: pulumi/actions@v6
+        env:
+          # The pulumi-stripe provider plugin is published to the author's GitHub releases, not the
+          # Pulumi registry (its SDK declares `server: github://...`). `pulumi up` auto-downloads it on
+          # first use; GITHUB_TOKEN authenticates that fetch so it isn't anonymously rate-limited.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           command: up
           cloud-url: ${{ env.PULUMI_BACKEND_URL }}
@@ -93,6 +105,10 @@ jobs:
           echo "d1_id=$(pulumi stack output d1DatabaseId --stack "$PULUMI_STACK")" >> "$GITHUB_OUTPUT"
           echo "site_key=$(pulumi stack output turnstileSiteKey --stack "$PULUMI_STACK")" >> "$GITHUB_OUTPUT"
           pulumi stack output turnstileSecretKey --show-secrets --stack "$PULUMI_STACK" > "$RUNNER_TEMP/ts_secret"
+          # Stripe outputs only exist when billing was provisioned (STRIPE_SECRET_KEY set) - tolerate absence.
+          echo "stripe_monthly=$(pulumi stack output stripePriceMonthlyId --stack "$PULUMI_STACK" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+          echo "stripe_annual=$(pulumi stack output stripePriceAnnualId --stack "$PULUMI_STACK" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+          pulumi stack output stripeWebhookSecret --show-secrets --stack "$PULUMI_STACK" 2>/dev/null > "$RUNNER_TEMP/stripe_webhook" || true
 
       # 3) Inject the real D1 id and APP_DOMAIN into the Worker configs. The committed configs ship
       #    byos3.com / a placeholder D1 id; CI rewrites them so a fork "just works" from its GitHub
@@ -148,6 +164,14 @@ jobs:
           bunx wrangler secret put TURNSTILE_SECRET_KEY < "$RUNNER_TEMP/ts_secret"
           printf '%s' "$BETTER_AUTH_SECRET" | bunx wrangler secret put BETTER_AUTH_SECRET
           printf '%s' "$CREDENTIAL_ENCRYPTION_KEY" | bunx wrangler secret put CREDENTIAL_ENCRYPTION_KEY
+          # Billing runs on the web Worker only. Set the runtime key + the Pulumi-provisioned price IDs
+          # and webhook secret - ONLY when a Stripe key is configured (empty puts would half-enable it).
+          if [ -n "$STRIPE_SECRET_KEY" ]; then
+            printf '%s' "$STRIPE_SECRET_KEY" | bunx wrangler secret put STRIPE_SECRET_KEY
+            printf '%s' "${{ steps.infra.outputs.stripe_monthly }}" | bunx wrangler secret put STRIPE_PRICE_MONTHLY
+            printf '%s' "${{ steps.infra.outputs.stripe_annual }}" | bunx wrangler secret put STRIPE_PRICE_ANNUAL
+            bunx wrangler secret put STRIPE_WEBHOOK_SECRET < "$RUNNER_TEMP/stripe_webhook"
+          fi
       - name: Set API secrets
         working-directory: workspaces/apps/api
         run: |
@@ -166,4 +190,5 @@ jobs:
             echo "| Web | https://$APP_DOMAIN |"
             echo "| API | https://api.$APP_DOMAIN |"
             echo "| Docs | https://docs.$APP_DOMAIN |"
+            echo "| Billing | $([ -n "$STRIPE_SECRET_KEY" ] && echo 'enabled (Stripe)' || echo 'disabled') |"
           } >> "$GITHUB_STEP_SUMMARY"

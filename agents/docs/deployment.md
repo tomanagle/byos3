@@ -53,8 +53,10 @@ its own deps in CI.
   R2) + the D1 migration ledger know the current deployed state, so re-running only applies the delta.
   The steps:
   1. Ensure the R2 **state bucket** exists (`wrangler r2 bucket create`, idempotent), then `pulumi up`
-     (provision D1 + Turnstile for `APP_DOMAIN`). Pulumi state lives in that R2 bucket - see below.
-  2. Read stack outputs (`d1DatabaseId`, `turnstileSiteKey`, `turnstileSecretKey`).
+     (provision D1 + Turnstile for `APP_DOMAIN`, plus - when `STRIPE_SECRET_KEY` is set, passed to
+     Pulumi as `STRIPE_API_KEY` - the live Stripe product/prices/webhook). Pulumi state lives in R2.
+  2. Read stack outputs (`d1DatabaseId`, `turnstileSiteKey`, `turnstileSecretKey`, and - when billing
+     is on - `stripePriceMonthlyId`, `stripePriceAnnualId`, `stripeWebhookSecret`).
   3. Inject the real D1 id and `APP_DOMAIN` into the three wrangler configs (the domain rewrite updates
      the `custom_domain` route patterns → `APP_DOMAIN` / `api.APP_DOMAIN` / `docs.APP_DOMAIN`).
   4. `bun run build` (with `VITE_TURNSTILE_SITE_KEY` = the Pulumi site key, inlined into the client
@@ -62,8 +64,10 @@ its own deps in CI.
      `bun run docs:build` → **`wrangler deploy --config wrangler.docs.jsonc`** (the docs site, built
      from the API's own OpenAPI spec; version comes from the root package.json).
   5. Set Worker secrets on **both** app Workers: `TURNSTILE_SECRET_KEY` (from the Pulumi output) +
-     `BETTER_AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` (from GitHub secrets). The docs Worker is
-     static assets only - no secrets.
+     `BETTER_AUTH_SECRET` and `CREDENTIAL_ENCRYPTION_KEY` (from GitHub secrets). When `STRIPE_SECRET_KEY`
+     is set, the **web** Worker also gets `STRIPE_SECRET_KEY` + the Pulumi-provisioned `STRIPE_PRICE_MONTHLY`
+     / `STRIPE_PRICE_ANNUAL` / `STRIPE_WEBHOOK_SECRET` (billing.md); unset = billing stays off. The docs
+     Worker is static assets only - no secrets.
 
   CI sets the Worker secrets directly from GitHub secrets (via `wrangler secret put`), so a fork
   needs no encrypted-secrets tooling - just set the GitHub secrets/variables below (see `secrets.md`).
@@ -104,7 +108,8 @@ is no manual bootstrap. To drive it locally: `pulumi login "$PULUMI_BACKEND_URL"
   Workers Routes + DNS + SSL and Certificates = Edit - the README has the exact matrix),
   `CLOUDFLARE_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `PULUMI_CONFIG_PASSPHRASE`
   (any strong string), `BETTER_AUTH_SECRET`, `CREDENTIAL_ENCRYPTION_KEY` (the last two:
-  `openssl rand -base64 32`).
+  `openssl rand -base64 32`), and optional `STRIPE_SECRET_KEY` (the LIVE key - enables billing:
+  Pulumi provisions the prices/webhook and the web Worker runs Checkout; omit to keep billing off).
 - **Variables:** `APP_DOMAIN` (your apex, e.g. `example.com`); optional `PULUMI_STACK` (default
   `production`) and `PULUMI_STATE_BUCKET` (default `byos3-pulumi-state`).
 - The domain's **zone must already exist** in your Cloudflare account (Workers attach the custom
