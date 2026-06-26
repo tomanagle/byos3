@@ -1,6 +1,6 @@
 # Web app
 
-`apps/web` is a **TanStack Start** application that **is the Worker** — it serves the React UI,
+`apps/web` is a **TanStack Start** application that **is the Worker** - it serves the React UI,
 hosts **server functions** (the UI's data layer), the Better Auth handler, and exports the
 `Namespace` Durable Object. See the Cloudflare framework guide and `monorepo.md` for config.
 
@@ -19,24 +19,24 @@ apps/web/src/
 ## Two transport surfaces, shared core
 
 - **Web → server functions.** The UI calls `createServerFn` functions (`fn/*.ts`) over
-  `@byos3/services` — same-origin, in-process during SSR, session-authed (via the `authMiddleware`
+  `@byos3/services` - same-origin, in-process during SSR, session-authed (via the `authMiddleware`
   that builds a `ServiceContext`). This is the web's **only** data path; there are **no `/api/v1`
   HTTP routes** in the web (even the public waitlist form is `fn/waitlist.ts`). The lone HTTP route
   is the Better Auth catch-all `api/auth/$`.
 - **Programmatic → `apps/api`.** The public, versioned, API-key HTTP surface is a separate Hono
   Worker (`api.byos3.com`, `api.md`), also thin over `@byos3/services`.
-- Both validate the **same `@byos3/protocol` schemas** and authorize in the service — neither holds
+- Both validate the **same `@byos3/protocol` schemas** and authorize in the service - neither holds
   business logic (`conventions.md`). Bindings via `import { env } from "cloudflare:workers"`. See
   `api.md` "Web data access" for why the UI doesn't call the API Worker.
 
 ## UI: shadcn/ui via `@byos3/ui`
 
-As built (Phase 0): shadcn/ui components (`Button`, `Input`, `Label` — cva + `@radix-ui/react-slot`)
+As built (Phase 0): shadcn/ui components (`Button`, `Input`, `Label` - cva + `@radix-ui/react-slot`)
 live in **`apps/web/src/components/ui`** with the shadcn theme tokens in `src/styles.css`
 (`@theme inline`, a custom dark + acid-lime palette, Tailwind v4). They import `cn` from
 **`@byos3/ui`** (the shared util). `components.json` is configured for `npx shadcn@latest add`.
 *Why in the app, not `packages/ui` yet:* Tailwind v4 ignores `node_modules` for content scanning, so
-a shared `packages/ui` needs `@source` wiring — promote shared primitives there in a later phase.
+a shared `packages/ui` needs `@source` wiring - promote shared primitives there in a later phase.
 
 **Data layer (TanStack Query):** a `QueryClientProvider` is mounted in `__root.tsx`; mutations
 (e.g. the waitlist submit) use `useMutation`. Reads use `useQuery`, invalidated on the WebSocket
@@ -57,12 +57,12 @@ The browser does the heavy lifting so bytes never hit the Worker:
 
 ## Key UI surfaces
 
-- **File browser** — tree per namespace; shows which **volume** each item lives on; a **volume
+- **File browser** - tree per namespace; shows which **volume** each item lives on; a **volume
   picker** to choose the drop target (the multi-connector requirement).
-- **Connectors/Volumes settings** — connect a bucket (provider creds → validated), mount volumes,
+- **Connectors/Volumes settings** - connect a bucket (provider creds → validated), mount volumes,
   preset CORS config, set the default drop volume.
-- **Billing** — plan, usage vs `limits`, upgrade/portal (Better Auth Stripe client).
-- **Real-time** — a WebSocket to the namespace DO; on a "poke", invalidate queries and pull deltas.
+- **Billing** - plan, usage vs `limits`, upgrade/portal (Better Auth Stripe client).
+- **Real-time** - a WebSocket to the namespace DO; on a "poke", invalidate queries and pull deltas.
 
 ## Navigation state lives in the URL (deep-linkable)
 

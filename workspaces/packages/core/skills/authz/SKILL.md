@@ -1,7 +1,7 @@
 ---
 name: authz
 description: >
-  Enforce byos3 authorization with @byos3/core/authz — namespace roles (owner/admin/writer/reader),
+  Enforce byos3 authorization with @byos3/core/authz - namespace roles (owner/admin/writer/reader),
   the createAccessControl statements, roleCan/authorize, and the deny-by-default check. Load when
   adding a permission check, defining a new resource:action, gating a use-case, or reasoning about
   how API-key scopes (keyScopes) intersect a user's role. Authorization happens in services, not transports.
@@ -14,7 +14,7 @@ sources:
   - 'tomanagle/byos3:agents/docs/api.md'
 ---
 
-# @byos3/core/authz — RBAC
+# @byos3/core/authz - RBAC
 
 One access-control vocabulary, defined once with Better Auth's `createAccessControl`, consumed by
 both the Better Auth organization plugin AND our offline `authorize()`. Roles are
@@ -25,7 +25,7 @@ both the Better Auth organization plugin AND our offline `authorize()`. Roles ar
 ```ts
 import { authorize, roleCan, type Role } from "@byos3/core/authz";
 
-// Statement vocabulary (resource: [actions]) — e.g. volume:[mount,unmount,update,list],
+// Statement vocabulary (resource: [actions]) - e.g. volume:[mount,unmount,update,list],
 // file:[read,create,update,delete,restore], share:[create,revoke,list], ai:[query,configure].
 const allowed = roleCan("writer", "file", "create"); // true
 ```
@@ -81,7 +81,7 @@ Source: agents/docs/rbac.md.
 Wrong:
 ```ts
 const role = await memberships.roleFor(userId, nsId);
-return presign(); // never checked role — non-members get in
+return presign(); // never checked role - non-members get in
 ```
 
 Correct:

@@ -1,4 +1,4 @@
-# Conventions — how to write code here
+# Conventions - how to write code here
 
 This is the house style. It exists so any agent or human produces code that fits. Read it before
 coding; follow it unless a doc for the specific area says otherwise.
@@ -17,7 +17,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 
 ## Layering (the most-violated rule)
 
-> Full structure — ports & adapters, entities, the composition root, sealed credentials — is in
+> Full structure - ports & adapters, entities, the composition root, sealed credentials - is in
 > `code-architecture.md`. The rules below are the enforceable summary.
 
 - **No business logic in transport layers.** TanStack server functions and `/api/v1` route
@@ -34,7 +34,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 - The DO is the **single writer** for its namespace. All mutations go through it; never write
   namespace metadata from a plain Worker path.
 - **Every mutation appends to the journal** and bumps the sequence. The seq is the only logical
-  clock — don't add timestamps-as-ordering.
+  clock - don't add timestamps-as-ordering.
 - Keep DO methods **short and transactional**; offload hashing/IO to the client or a Queue.
 - Use the **WebSocket Hibernation API** (`state.acceptWebSocket`), never `ws.accept()`, so idle
   connections don't accrue billing.
@@ -42,7 +42,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 ## Storage & sync invariants (enforce in code)
 
 - **Bytes never through the Worker.** Mint presigned URLs; let the client transfer. (Sole
-  exception: the AI indexer — see `ai-rag.md`.)
+  exception: the AI indexer - see `ai-rag.md`.)
 - **Commit references hashes, only after blobs are durable.** Two-phase: missing-check → upload →
   commit. Make commits **idempotent** (re-committing the same blocklist is a no-op).
 - **Trust client-computed SHA-256, not provider ETags** (ETag ≠ content hash for multipart).
@@ -50,7 +50,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 - **Make illegal states unrepresentable; keep the sync core deterministic.** The journal-op/tree
   model must forbid invalid trees (no orphan, cycle, or duplicate location); planner/tree logic is a
   pure deterministic function (inject time/randomness/IO) so it can be property/simulation-tested.
-  Dropbox's load-bearing lesson — see `foundational-considerations.md` §1, §6.
+  Dropbox's load-bearing lesson - see `foundational-considerations.md` §1, §6.
 
 ## Errors
 
@@ -60,7 +60,7 @@ coding; follow it unless a doc for the specific area says otherwise.
 
 ## Logging (wide events)
 
-- **One wide event per request/hop, emitted once** — never scattered `console.log` lines. Build
+- **One wide event per request/hop, emitted once** - never scattered `console.log` lines. Build
   the event through the request and `emit()` it in a `finally`. Use `@byos3/logging`; enrich the
   current event with business context instead of adding a log statement. Full rules:
   `agents/docs/logging.md`.
@@ -71,11 +71,11 @@ coding; follow it unless a doc for the specific area says otherwise.
   secret). Never log secrets, access keys, or presigned URLs.
 - Presigned URLs are **bearer tokens**: short TTL (minutes), pin `Content-Type` (and
   `Content-Length` where possible), scope to one exact key.
-- Authorize every namespace operation with `requirePermission` (edge) and `authorize()` (DO) — the
+- Authorize every namespace operation with `requirePermission` (edge) and `authorize()` (DO) - the
   RBAC use-case in `@byos3/core/authz`; never inline `role === …` checks. See `rbac.md`.
 - **One authorization model, two auth methods.** A unified middleware resolves a **session** (web) or
   **API key** (programmatic) to a `Principal`; authorize identically. API-key requests also pass the
-  key's scopes (∩ with the role). byos3 is **API-first** — every capability is reachable via
+  key's scopes (∩ with the role). byos3 is **API-first** - every capability is reachable via
   `/api/v1`; web server functions and `/api/v1` are both thin over `@byos3/core`. See `api.md`.
 
 ## Testing
@@ -90,7 +90,18 @@ coding; follow it unless a doc for the specific area says otherwise.
 
 ## Style
 
-- Format with **oxfmt** (`bun run format`) and lint with **oxlint** (`bun run lint`) — not
+- Format with **oxfmt** (`bun run format`) and lint with **oxlint** (`bun run lint`) - not
   Prettier/ESLint; lefthook runs them pre-commit (`deployment.md`). Named exports (no default
   exports except where a framework requires).
 - Comments explain *why*, not *what*. Match the density of surrounding code.
+- No em-dashes anywhere (UI copy, comments, docs) - use a hyphen, comma, colon, or reword.
+
+## Typography (Tailwind)
+
+- **Never use arbitrary text sizes** (`text-[13.5px]`, `text-[0.7rem]`, …). Use the standard scale
+  classes only (`text-xs`/`text-sm`/`text-base`/`text-lg`/…).
+- **Real text is `text-base` (16px) minimum** - body copy, field labels, inputs, buttons, nav/menu
+  items, file names. `text-sm` (14px) is allowed for *secondary* metadata (sizes, timestamps,
+  captions); `text-xs` (12px) only for non-prose micro-affordances (provider/mono badges, uppercase
+  eyebrow labels, key-shortcut hints). Inputs stay ≥16px (also avoids iOS focus-zoom).
+- Don't smuggle a smaller size past this with arbitrary line-heights or `scale-*` either.

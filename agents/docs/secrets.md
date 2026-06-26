@@ -1,86 +1,50 @@
-# Secrets management (SOPS + age)
+# Secrets management
 
-We manage the Worker's **platform secrets** with [SOPS](https://github.com/getsops/sops) using
-**age** encryption. Two environments for now: **local** (per-developer, gitignored) and **prod**
-(committed, encrypted).
+The Worker's **platform secrets** are plaintext `.dev.vars` files locally (gitignored) and **GitHub
+Actions secrets** in production (the deploy workflow pushes them to the Workers with
+`wrangler secret put`). No SOPS, no age, no encrypted files in the repo.
 
-## Two kinds of credentials — don't conflate them
+## Two kinds of credentials - don't conflate them
 
 | | **Platform secrets** (this doc) | **End-user bucket credentials** |
 |---|---|---|
-| What | The Worker's own keys: `CREDENTIAL_ENCRYPTION_KEY`, `BETTER_AUTH_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, OAuth secrets | A user's S3/R2/B2 access keys for their connector |
-| Who provides | Us (developers/ops) | The end user, at runtime, in the app |
-| Stored | SOPS files → Wrangler secrets / `.dev.vars` | Envelope-encrypted in **D1** by `packages/crypto` |
-| Encrypted with | age (SOPS) | `CREDENTIAL_ENCRYPTION_KEY` (which is itself a platform secret) |
+| What | The Worker's own keys: `CREDENTIAL_ENCRYPTION_KEY`, `BETTER_AUTH_SECRET`, `TURNSTILE_SECRET_KEY`, `STRIPE_*`, OAuth secrets | A user's S3/R2/B2 access keys for their connector |
+| Who provides | Us (developers / ops) | The end user, at runtime, in the app |
+| Stored | `.dev.vars` (local) / Wrangler secrets (prod) | Envelope-encrypted in **D1** by `packages/crypto` |
+| Protected by | gitignore (local) + Cloudflare secret storage (prod) | `CREDENTIAL_ENCRYPTION_KEY` (itself a platform secret) |
 
-So SOPS protects the **root key** that in turn protects users' bucket creds. See
-`storage-byo-s3.md` for the runtime side.
+So `CREDENTIAL_ENCRYPTION_KEY` is the **root key** that protects users' bucket creds. See
+`storage-byo-s3.md` for the runtime side, `code-architecture.md` for the sealed-credential pattern.
 
-## Files
+The web + api Workers bind the **same** D1, so they must share the **same**
+`CREDENTIAL_ENCRYPTION_KEY` and `BETTER_AUTH_SECRET`.
 
-```
-.sops.yaml                    creation rules (prod recipients); committed
-secrets/secrets.example.env   template listing required keys (empty values); committed
-secrets/prod.sops.env         PRODUCTION secrets, SOPS-encrypted; COMMITTED (safe — encrypted)
-secrets/local.sops.env        YOUR local secrets, SOPS-encrypted; GITIGNORED
-.dev.vars (in apps/web)       plaintext generated from local; GITIGNORED; read by wrangler/vite
-```
-
-Why is `local` gitignored even though SOPS-encrypted? Project decision: local secrets are personal
-(your own Stripe test keys, your own dev root key) and never need sharing. Prod is the only shared,
-committed encrypted file.
-
-## First-time local setup
+## Local development
 
 ```bash
-brew install sops age          # one-time, if missing
-bun run secrets:setup          # interactive
+bun run secrets:setup          # writes workspaces/apps/{web,api}/.dev.vars (skips existing)
+bun run secrets:setup --force  # regenerate (rotates the keys)
 ```
 
-`scripts/setup-secrets.ts`:
-1. ensures an **age key** at the SOPS default path (`~/.config/sops/age/keys.txt`), generating one
-   if needed (so decryption "just works" with no env vars);
-2. prompts for each secret — **auto-generating** random values for `CREDENTIAL_ENCRYPTION_KEY` and
-   `BETTER_AUTH_SECRET` (just press enter), and letting you paste Stripe test keys;
-3. writes `secrets/local.sops.env` encrypted to **your** age key;
-4. writes `apps/web/.dev.vars` (plaintext) for local dev.
+`scripts/setup-secrets.ts` generates a random `CREDENTIAL_ENCRYPTION_KEY` + `BETTER_AUTH_SECRET`
+(the same value in both files), fills the Turnstile **test** secret, and leaves optional keys
+(Stripe) blank. Or copy `workspaces/apps/web/.dev.vars.example` to `.dev.vars` and fill it yourself.
+`wrangler dev` / vite read `.dev.vars` automatically.
 
-Re-run anytime to change values. After pulling someone else's changes (or regenerating), refresh
-the plaintext without re-prompting:
+## Production (GitHub Actions)
 
-```bash
-bun run secrets:setup --sync   # decrypt local.sops.env → .dev.vars
-```
-
-> Input is echoed to the terminal — run it somewhere private.
-
-## Production
-
-1. **Recipients:** put your team/CI **age public key(s)** in `.sops.yaml` under the
-   `secrets/prod.sops.env` rule (comma-separate multiple). Generate one with
-   `age-keygen -o ~/.config/sops/age/keys.txt` and copy its `public key:` line.
-2. **Edit prod secrets:** `sops secrets/prod.sops.env` opens an editor; SOPS encrypts on save. The
-   file is created/encrypted per `.sops.yaml`. Commit it (it's encrypted).
-3. **Deploy to the Worker:** `bun run secrets:deploy` decrypts prod and pushes every key via
-   `wrangler secret bulk`. Requires a private key that can decrypt prod.
-
-## package.json scripts (added in Phase 0)
-
-```jsonc
-{
-  "scripts": {
-    "secrets:setup":  "bun scripts/setup-secrets.ts",
-    "secrets:deploy": "bun scripts/deploy-secrets.ts"
-  }
-}
-```
+Set these as repo **secrets** (Settings → Secrets and variables → Actions):
+`CREDENTIAL_ENCRYPTION_KEY`, `BETTER_AUTH_SECRET` (each `openssl rand -base64 32`). `TURNSTILE_SECRET_KEY`
+is provisioned by Pulumi, not stored in GitHub. On deploy, `.github/workflows/deploy.yml` runs
+`wrangler secret put` for each, on **both** Workers (after deploying them). See `deployment.md` +
+the repo `README.md` for the full secret/variable list.
 
 ## Rules
 
-- **Never commit** plaintext secrets, `.dev.vars`, `secrets/local.sops.env`, or any `keys.txt` age
-  key (all gitignored).
+- **Never commit** plaintext secrets or `.dev.vars` (gitignored; `.dev.vars.example` is the only
+  committed template, and it carries no real values).
 - **Never log** secret values or presigned URLs (see `logging.md`).
-- Rotate by editing the SOPS file and re-deploying; rotating `CREDENTIAL_ENCRYPTION_KEY` requires
-  re-wrapping stored user creds — treat as a migration (`crypto` package concern).
-- The file format is **dotenv** (`KEY=value`), so SOPS output maps directly to `.dev.vars` and to
-  `wrangler secret bulk` JSON.
+- Rotate prod by changing the GitHub secret and re-running the deploy. Rotating
+  `CREDENTIAL_ENCRYPTION_KEY` requires re-wrapping stored user creds - treat it as a migration (a
+  `crypto` package concern), not a casual change.
+- The file format is **dotenv** (`KEY=value`), read directly by `wrangler dev` / vite.

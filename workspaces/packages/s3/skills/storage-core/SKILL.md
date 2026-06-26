@@ -16,11 +16,11 @@ sources:
   - 'tomanagle/byos3:agents/docs/code-architecture.md'
 ---
 
-# @byos3/s3 — storage driver
+# @byos3/s3 - storage driver
 
 Every provider is reduced to one `StorageDriver` interface. Provider differences are **data**
 (`ProviderCapabilities` rows), never `if (provider === …)` branches. The driver only ever *signs*
-requests — clients transfer bytes **directly** to the user's bucket via presigned URLs.
+requests - clients transfer bytes **directly** to the user's bucket via presigned URLs.
 
 ## Setup
 
@@ -42,16 +42,16 @@ const driver = createDriver({
 ## Core patterns
 
 ```ts
-// Presign — short TTL, pinned method/headers. The URL is a bearer token (never log it).
+// Presign - short TTL, pinned method/headers. The URL is a bearer token (never log it).
 const put = await driver.presignPut("byos3/chunks/<sha256>", { expiresIn: 300 });
 const get = await driver.presignGet("byos3/chunks/<sha256>", { expiresIn: 300 });
-// → { url, method, headers?, expiresAt } — return this to the client; it PUTs/GETs the bytes itself.
+// → { url, method, headers?, expiresAt } - return this to the client; it PUTs/GETs the bytes itself.
 
 // Read-only existence/size + best-effort connectivity check.
 const head = await driver.headObject("byos3/chunks/<sha256>"); // ObjectHead | null
 const ok = await driver.probe(); // ListObjectsV2(prefix, max-keys=1) → { ok, reason? }
 
-// Capability-gated features throw a typed error on providers that lack them — don't branch on provider.
+// Capability-gated features throw a typed error on providers that lack them - don't branch on provider.
 if (driver.capabilities.corsViaS3Api) await driver.putCors(rules);
 ```
 
@@ -61,7 +61,7 @@ if (driver.capabilities.corsViaS3Api) await driver.putCors(rules);
 
 Wrong:
 ```ts
-const obj = await driver.getObject(key);      // no such method — and would route bytes through workerd
+const obj = await driver.getObject(key);      // no such method - and would route bytes through workerd
 return new Response(obj.body);
 ```
 
@@ -94,7 +94,7 @@ fetch(`https://${bucket}.${host}/${key}`); // breaks MinIO / many S3-compatible 
 
 Correct:
 ```ts
-// The SigV4 driver uses PATH-STYLE (https://endpoint/bucket/key) — required for broad compatibility.
+// The SigV4 driver uses PATH-STYLE (https://endpoint/bucket/key) - required for broad compatibility.
 await driver.presignGet(key);
 ```
 Source: agents/docs/s3-compatibility.md.

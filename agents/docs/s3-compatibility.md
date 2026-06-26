@@ -1,4 +1,4 @@
-# S3 compatibility — what it means & how we verify it
+# S3 compatibility - what it means & how we verify it
 
 Required reading before working on `packages/s3` or any provider integration. Explains what
 "S3-compatible" actually means, the exact S3 subset **byos3** depends on, and how we test our
@@ -15,16 +15,16 @@ A provider is **"S3-compatible"** when it re-implements that same HTTP surface o
 endpoint, so an AWS SDK / SigV4 signer works against it unchanged. They copy the *protocol*, not
 AWS's internals. The moving parts that define compatibility:
 
-- **Endpoint & addressing** — *virtual-hosted* (`https://BUCKET.host/key`) vs *path-style*
+- **Endpoint & addressing** - *virtual-hosted* (`https://BUCKET.host/key`) vs *path-style*
   (`https://host/BUCKET/key`). Some providers require path-style (MinIO, GCS, OCI).
-- **Region in the SigV4 scope** — real region (AWS), `auto` (R2/GCS/Tigris), baked into the
+- **Region in the SigV4 scope** - real region (AWS), `auto` (R2/GCS/Tigris), baked into the
   endpoint (B2), or ignored-but-required (MinIO `us-east-1`).
-- **Operation set** — which S3 actions exist (`PutObject`, multipart set, `ListObjectsV2`, …).
-- **Headers & semantics** — `ETag` (≠ content hash on multipart), `x-amz-*`, checksums,
+- **Operation set** - which S3 actions exist (`PutObject`, multipart set, `ListObjectsV2`, …).
+- **Headers & semantics** - `ETag` (≠ content hash on multipart), `x-amz-*`, checksums,
   conditional requests (`If-Match`/`If-None-Match`/`If-Range`).
-- **XML schemas & error codes** — response/error shapes the client must parse.
+- **XML schemas & error codes** - response/error shapes the client must parse.
 
-Because we sign requests ourselves with **aws4fetch** (no AWS SDK on Workers — see `monorepo.md`),
+Because we sign requests ourselves with **aws4fetch** (no AWS SDK on Workers - see `monorepo.md`),
 we are a direct consumer of this wire protocol and must respect these details exactly.
 
 ## Compatibility is a spectrum
@@ -48,7 +48,7 @@ An endpoint must support **all** of this for us to use it:
   `AbortMultipartUpload`, `ListParts`, `ListMultipartUploads`; **≥5 MB** non-final parts; a
   readable per-part **ETag** to pass to Complete.
 - **CORS:** the bucket can be made to return CORS headers that **expose `ETag`** for browser
-  multipart — *by whatever mechanism the provider offers* (`PutBucketCors`, dashboard, env var, or
+  multipart - *by whatever mechanism the provider offers* (`PutBucketCors`, dashboard, env var, or
   automatic). Not necessarily via the S3 API.
 - **Integrity:** we compute and trust our own **SHA-256** (`sync-engine.md`); we never rely on
   ETag as a content hash.
@@ -58,33 +58,33 @@ never set them), website hosting, or S3 Select. Don't write code that depends on
 
 ## How we verify it (two layers)
 
-### Layer 1 — our client conformance, against local MinIO (CI)
+### Layer 1 - our client conformance, against local MinIO (CI)
 
 `packages/s3` ships an **integration test that round-trips our exact operation set** (connect-probe
 → put → head → get → list → multipart upload → complete → presigned PUT/GET → delete) against a
 **local MinIO** container (a known-good S3 server). This is the primary, fast, free way to "test
-our interfaces" — it validates our SigV4 signer, presigner, multipart logic, and XML parsing
+our interfaces" - it validates our SigV4 signer, presigner, multipart logic, and XML parsing
 against real S3 behavior on every CI run. MinIO also serves as the fixture for unit-testing the
-signer. (MinIO requires path-style + region `us-east-1` — see `storage-providers.md`.)
+signer. (MinIO requires path-style + region `us-east-1` - see `storage-providers.md`.)
 
-### Layer 2 — provider certification, with ceph/s3-tests
+### Layer 2 - provider certification, with ceph/s3-tests
 
 [**ceph/s3-tests**](https://github.com/ceph/s3-tests) is the de-facto external S3-compatibility
-suite (Python, `pytest`+`tox`, boto2/boto3) — "useful to people implementing software that exposes
+suite (Python, `pytest`+`tox`, boto2/boto3) - "useful to people implementing software that exposes
 an S3-like API." It tests an S3 **endpoint/server**, so we use it to **certify that a candidate
 provider actually supports our required subset** before we promote it in `storage-providers.md`'s
-support tiers — grounding the capability matrix in empirical results, not just docs.
+support tiers - grounding the capability matrix in empirical results, not just docs.
 
 - **Config:** copy `s3tests.conf.SAMPLE` → `byos3.conf`; set endpoint host/port/ssl, two credential
   sets, and a **bucket prefix** for test buckets.
-- **Run:** `S3TEST_CONF=byos3.conf tox` — target a subset with
+- **Run:** `S3TEST_CONF=byos3.conf tox` - target a subset with
   `tox -- s3tests/functional/test_s3.py` (or `::test_name`), and **exclude AWS-known-failures** with
   `tox -- -m 'not fails_on_aws'`. Select the operations in our profile by keyword/marker.
 - **The byos3 profile** = the subset of s3-tests that maps to our required operations (object RW,
   listing, multipart, presigned, CORS). An endpoint that passes the profile is safe to support; a
   failure pins exactly which capability flag to flip or which tier to assign.
 - **⚠️ Destructive & credential-sensitive:** the suite creates and deletes many buckets and objects.
-  **Run it only against a throwaway account/project with a dedicated test bucket prefix — never
+  **Run it only against a throwaway account/project with a dedicated test bucket prefix - never
   against a real user's bucket or credentials.** Some tests need STS/IAM config we don't use; skip
   those.
 
@@ -98,8 +98,8 @@ support tiers — grounding the capability matrix in empirical results, not just
 
 ## Where the code lives
 
-- `packages/s3` — the client + its MinIO conformance/integration tests.
-- `tools/s3-compat/` — the `byos3.conf` template, the byos3 test-selection (profile) for
+- `packages/s3` - the client + its MinIO conformance/integration tests.
+- `tools/s3-compat/` - the `byos3.conf` template, the byos3 test-selection (profile) for
   ceph/s3-tests, and a runner script. (Added when the first non-MVP provider is certified.)
 
 ## Links

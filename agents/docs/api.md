@@ -3,18 +3,18 @@
 byos3 is **API-first**: the public, versioned HTTP API at **`api.byos3.com/v1`** is the canonical
 surface, and **anything the web UI can do can be done programmatically with an API key.** The web
 uses sessions (the most secure option for browsers); programmatic clients use API keys. These are
-just two *authentication* methods — **authorization is the same RBAC for both** (`rbac.md`).
+just two *authentication* methods - **authorization is the same RBAC for both** (`rbac.md`).
 
 ## Two Workers, one core
 
 The API and the web are **two separate Cloudflare Workers** (`monorepo.md`):
 
-- **`apps/api`** — a **Hono** Worker served at `api.byos3.com`, authenticated by **API key**.
-- **`apps/web`** — a **TanStack Start** Worker (UI + server functions), authenticated by **session**.
+- **`apps/api`** - a **Hono** Worker served at `api.byos3.com`, authenticated by **API key**.
+- **`apps/web`** - a **TanStack Start** Worker (UI + server functions), authenticated by **session**.
   It also hosts the `Namespace` Durable Object; `apps/api` reaches the DO via a **service binding**.
 
 Both are thin transports over the **same `@byos3/services` use-cases**. We chose two Workers (not one
-Worker serving both) so each has an independent runtime, deploy cadence, and threat surface — the
+Worker serving both) so each has an independent runtime, deploy cadence, and threat surface - the
 API is a Hono app, the web is a TanStack Start app, and neither's framework leaks into the other.
 
 ## Principles
@@ -26,10 +26,10 @@ API is a Hono app, the web is a TanStack Start app, and neither's framework leak
 - **Versioned and stable.** `api.byos3.com/v1` is treated as a product: a versioned path,
   Zod-validated I/O (from `@byos3/protocol`), a generated OpenAPI spec, and a deprecation policy.
 - **Stateless and explicit.** API routes are **namespace-scoped by path**
-  (`/v1/namespaces/{namespaceId}/…`) — there is no hidden "active organization" as in the
+  (`/v1/namespaces/{namespaceId}/…`) - there is no hidden "active organization" as in the
   session/web flow. The caller names the namespace; we authorize against it.
 - **Bytes still go direct.** File operations over the API use the same two-phase commit; the API
-  returns **presigned PUT/GET URLs** and the client transfers to the bucket directly — the
+  returns **presigned PUT/GET URLs** and the client transfers to the bucket directly - the
   "bytes never through the Worker" rule holds (`storage-byo-s3.md`).
 
 ## Two authentication methods, one authorization model
@@ -72,7 +72,7 @@ statements (`@byos3/core/authz`: `file`, `volume`, `share`, `ai`, `member`, …)
 permission for an API-key request = intersection( the user's RBAC permission in that namespace , the
 key's scopes )**. Therefore:
 
-- A key can **never exceed its owner's role** — it can only *narrow* it.
+- A key can **never exceed its owner's role** - it can only *narrow* it.
 - A read-only CI key = `{ file: ["read"], ai: ["query"] }`; a backup key scoped to one namespace; etc.
 - `authorize()` takes an optional **`keyScopes`**; when the request is key-authenticated, the action
   must pass the role/grant check **and** the key scope. (Sessions have no `keyScopes` → full role.)
@@ -87,7 +87,7 @@ authenticated WebSocket). These call the **identical `@byos3/services` use-cases
 
 ## Implementation pattern (`apps/api`)
 
-The API Worker is a **`@hono/zod-openapi` `OpenAPIHono` app** — the schemas that validate requests
+The API Worker is a **`@hono/zod-openapi` `OpenAPIHono` app** - the schemas that validate requests
 ARE the schemas that generate the docs (one source, no drift). The shape mirrors a proven layout:
 
 - **Modules** in `src/modules/<name>/` split into `<name>.router.ts` (routes), `<name>.schema.ts`
@@ -101,11 +101,11 @@ ARE the schemas that generate the docs (one source, no drift). The shape mirrors
   **`@byos3/services`** use-case via static import, and returns. **No business logic, no dynamic imports.**
 - **Errors** are Stripe-shaped: a typed `ApiError` (+ `API_ERROR_CODES`); the error handler maps
   `@byos3/core` `AppError` and `ZodError` onto it, always with a `requestId`. Authorization stays in
-  the service (`assertCan` = role ∩ keyScopes) — the edge does not duplicate scope checks.
+  the service (`assertCan` = role ∩ keyScopes) - the edge does not duplicate scope checks.
 
 ## Web data access (server functions, not the API Worker)
 
-The web UI does **not** call `api.byos3.com` for its own data — that would mean cross-origin cookies
+The web UI does **not** call `api.byos3.com` for its own data - that would mean cross-origin cookies
 + CORS + an extra network hop on every SSR load, and would couple the UI to the public `/v1`
 versioning contract. Instead it uses **TanStack `createServerFn`** over `@byos3/services`, same-origin
 and (during SSR) in-process:
@@ -118,27 +118,40 @@ export const uploadIntent = createServerFn({ method: "POST" })
 ```
 
 So both transports are thin over the one services layer, both validate the same protocol schemas,
-and authorization lives in the service for both — the web never duplicates the public API, and the
+and authorization lives in the service for both - the web never duplicates the public API, and the
 public API is never on the UI's hot path.
 
 ## OpenAPI & docs
 
 `app.doc("/openapi.json", …)` serves the spec generated from the route schemas; `/docs` renders it
-with **Scalar**. `scripts/build-docs.ts` (`bun run docs:build`) writes a static `dist/openapi.json`
-+ `index.html` for a published docs site. An `openapi` test asserts the documented surface. A typed
-client SDK can be generated from the spec. This is what makes "API-first" real, not aspirational.
+inline with **Scalar** (same-origin "Try It" - handy hitting the Worker directly).
+
+The **public reference site lives at `docs.<APP_DOMAIN>`** (e.g. docs.byos3.com), built from that
+same spec - one source, no drift:
+
+- `scripts/build-docs.ts` (`bun run docs:build`) imports the Hono app, pulls `/openapi.json`, and
+  writes a self-contained `dist-docs/index.html` (Scalar via CDN, spec inlined) + `dist-docs/openapi.json`.
+  It sets Scalar's `baseServerURL` to `https://api.<APP_DOMAIN>` so "Try It" on the cross-origin docs
+  site targets the real API (override with `DOCS_BASE_SERVER_URL`, as the local docs container does).
+- `bun run docs:deploy` builds, then deploys `wrangler.docs.jsonc` - a **static-assets-only Worker**
+  (`byos3-docs`, no `main`) whose `custom_domain` route provisions DNS + TLS for `docs.<APP_DOMAIN>`,
+  exactly like web/api. CI runs this on every deploy (`deployment.md`); locally the `docs` container
+  serves it (`dev/README.md`).
+
+An `openapi` test asserts the documented surface. A typed client SDK can be generated from the spec.
+This is what makes "API-first" real, not aspirational.
 
 ## Security
 
 - API keys are **bearer tokens**: TLS only, **hashed at rest, shown once**, **least-privilege
-  scopes**, **expiry + rotation**, **per-key rate limits**, revocable. **Never logged** — log the
+  scopes**, **expiry + rotation**, **per-key rate limits**, revocable. **Never logged** - log the
   prefix / key id only (`logging.md`).
 - **Sessions** are the most secure browser option (httpOnly + secure + CSRF). Don't hand browsers a
   bearer token.
 - Neither credential ever exposes the user's **bucket credentials**: the API returns presigned URLs;
   connector secrets stay server-side, sealed (`code-architecture.md`, `secrets.md`).
 - Every authenticated request emits a wide event with `auth_method`, `api_key_id` (prefix),
-  `namespace_id`, and `op` — never the key or the presigned URL.
+  `namespace_id`, and `op` - never the key or the presigned URL.
 
 ## Phasing
 
@@ -149,18 +162,18 @@ journal/tree endpoints (with the Namespace DO). See `plans/`.
 
 ## Where the code lives
 
-- **`@byos3/services`** — every use-case (the single source of business logic for both transports).
-- **`@byos3/auth`** — `createAuth(...)`: the one Better Auth config (incl. `apiKey`), shared by both
-  Workers. **`@byos3/db`** — schema + repositories + `createSessionDb` (D1 read replicas).
-- **`workspaces/apps/api/src/`** — the OpenAPIHono Worker: `app.ts` (assembly + `/openapi.json` +
+- **`@byos3/services`** - every use-case (the single source of business logic for both transports).
+- **`@byos3/auth`** - `createAuth(...)`: the one Better Auth config (incl. `apiKey`), shared by both
+  Workers. **`@byos3/db`** - schema + repositories + `createSessionDb` (D1 read replicas).
+- **`workspaces/apps/api/src/`** - the OpenAPIHono Worker: `app.ts` (assembly + `/openapi.json` +
   `/docs`), `middleware/*`, `modules/<name>/<name>.{router,schema,serializer}.ts`, `lib/errors.ts`.
   Thin over `@byos3/services`; static imports only.
-- **`workspaces/apps/web/src/fn/*.ts`** — TanStack **server functions** (`createServerFn`), the
+- **`workspaces/apps/web/src/fn/*.ts`** - TanStack **server functions** (`createServerFn`), the
   web's session-authed data path. `src/lib/middleware.ts` holds the chain (`loggingMiddleware` →
   `authMiddleware` → `ServiceContext` on `context.ctx`). The only `routes/api/*` HTTP handlers are
-  the Better Auth catch-all (`api/auth/$`). It is the **only** `routes/api/*` HTTP handler — even the
+  the Better Auth catch-all (`api/auth/$`). It is the **only** `routes/api/*` HTTP handler - even the
   public waitlist form is a server function (`fn/waitlist.ts`); programmatic HTTP is `apps/api`.
-- `@byos3/protocol` — the canonical Zod input schemas (`ConnectBucketInput`, `UploadIntentInput`,
+- `@byos3/protocol` - the canonical Zod input schemas (`ConnectBucketInput`, `UploadIntentInput`,
   `VolumeUploadInput`, …). **Both transports validate against the same objects**: web server fns via
   `.inputValidator(schema)`, api routes via `createRoute({ request })` + `.openapi(name)` (one
   schema both validates and documents).

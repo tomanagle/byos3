@@ -28,9 +28,9 @@ target permits it.
   Auth's org tables; we extend `organization`/`member` with `additionalFields` rather than keeping
   parallel tables (supersedes the ad-hoc `team`/`member` sketch in `namespaces-and-acl.md`).
 - **Platform roles** live on `user.role` via the **admin plugin** (default `user`; plus `support`,
-  `admin`). Identifies staff for the admin console, support impersonation, and system ops — *not* a
+  `admin`). Identifies staff for the admin console, support impersonation, and system ops - *not* a
   tenant role.
-- **Resource grants & public links** are our own tables (`grant`, `shareLink` — see Data model),
+- **Resource grants & public links** are our own tables (`grant`, `shareLink` - see Data model),
   reusing the same namespace role definitions so "writer on a subtree" means exactly "writer,
   scoped to that subtree."
 
@@ -73,10 +73,10 @@ and `session` (`list|revoke|delete`).
 | `session:revoke` | ✓ | ✓ | |
 
 **Platform scope never grants ambient read of tenant content.** Support acts on a user's data only
-by **impersonation** — which mints a real session subject to normal namespace RBAC — and every
+by **impersonation** - which mints a real session subject to normal namespace RBAC - and every
 impersonation/admin action emits a wide event (`logging.md`).
 
-## The permission model — one source of truth
+## The permission model - one source of truth
 
 Define the access-control statements and roles **once** in `@byos3/core/authz`. Better Auth's
 plugins consume them; our own `authorize()` evaluates them offline (in the edge *and* the DO).
@@ -115,7 +115,7 @@ export const owner = ac.newRole({
 export const NAMESPACE_ROLES = { owner, admin, writer, reader } as const;
 export type Role = keyof typeof NAMESPACE_ROLES;
 ```
-(Confirm the exact `*Ac` exports against the installed Better Auth version — `defaultStatements`
+(Confirm the exact `*Ac` exports against the installed Better Auth version - `defaultStatements`
 and `adminAc` are documented; `ownerAc`/`memberAc` may also exist.)
 
 `roleCan` is the offline primitive used everywhere:
@@ -132,16 +132,16 @@ The platform AC is defined the same way from `better-auth/plugins/admin/access` 
 ## Resource-scoped grants & public links
 
 > **Cross-user folder sharing is a *shared namespace* mounted into members' roots** (the mount model
-> — `namespaces-and-acl.md`, `foundational-considerations.md` §2), **not** a grant. The grants below
+> - `namespaces-and-acl.md`, `foundational-considerations.md` §2), **not** a grant. The grants below
 > are for *intra-namespace* subtree role scoping and public links only.
 
 Beyond org-wide roles, a principal can be granted a role on a **subtree**:
 
-- **`grant`** — `(namespaceId, subtreeNodeGid, principalType: user|email, principalId, role)`. The
+- **`grant`** - `(namespaceId, subtreeNodeGid, principalType: user|email, principalId, role)`. The
   grantee gets that role's permissions *for nodes under `subtreeNodeGid`*. Used for **intra-namespace
   subtree scoping** (narrowing/granting a member's role on a subtree). **Cross-user sharing is the
-  mount model (a shared namespace), not a grant** — see `namespaces-and-acl.md`.
-- **`shareLink`** — a tokenized capability: `(namespaceId, subtreeNodeGid, tokenHash, role, expiresAt,
+  mount model (a shared namespace), not a grant** - see `namespaces-and-acl.md`.
+- **`shareLink`** - a tokenized capability: `(namespaceId, subtreeNodeGid, tokenHash, role, expiresAt,
   passwordHash?)`. Anonymous read of a subtree; maps to a synthetic `reader` (or download-only)
   permission. Bytes still come direct from the volume via a presigned GET.
 
@@ -155,21 +155,21 @@ Deny if none permit the action.
 ## Resource-level sharing (connectors & volumes)
 
 Connectors and volumes are **shared per-resource**, not via namespace membership (a deliberate
-product choice — simpler "invite a person to this drive" UX). A user holds a **resource role** on a
+product choice - simpler "invite a person to this drive" UX). A user holds a **resource role** on a
 specific connector/volume; access is decided by that role, independent of any namespace.
 
 - **`connector.ownerUserId`** is a real FK to `user`. The owner is seeded as a `full` member on
   connect; `connector_member` / `volume_member` `(userId, resourceId, role)` hold the shares.
-- **Roles** (`@byos3/core/authz` `ResourceRole`): `read_only` (list/read/download — reader-equiv),
-  `read_write` (+ file CRUD + create shares — writer-equiv), `full` (+ manage/rename/delete the
-  resource and its members — admin). Built from the same AC statement vocabulary via `resourceCan`.
+- **Roles** (`@byos3/core/authz` `ResourceRole`): `read_only` (list/read/download - reader-equiv),
+  `read_write` (+ file CRUD + create shares - writer-equiv), `full` (+ manage/rename/delete the
+  resource and its members - admin). Built from the same AC statement vocabulary via `resourceCan`.
 - **Enforcement**: `@byos3/services` `assertCanVolume(ctx, volumeId, action)` /
   `assertCanConnector(...)` resolve the caller's resource role (`ResourceAccessRepository`) and call
-  `resourceCan`; for API keys the action must ALSO be within the key scope (intersection — still
+  `resourceCan`; for API keys the action must ALSO be within the key scope (intersection - still
   narrows). `listVolumes` returns the volumes the caller is a member of. Managing members
   (`shareVolume`/`unshareVolume`) requires `full`.
-- **Storage vs access**: a volume keeps a `namespaceId` — its **sync/DO home** (where its journal
-  lives) — but that is *storage*, not the access boundary. Access is the resource role.
+- **Storage vs access**: a volume keeps a `namespaceId` - its **sync/DO home** (where its journal
+  lives) - but that is *storage*, not the access boundary. Access is the resource role.
 
 > This **supersedes**, for connectors/volumes, the "sharing = a shared namespace mounted into roots"
 > model in `namespaces-and-acl.md §3`. That mount model + the `grant`/`shareLink` subtree tools
@@ -215,17 +215,17 @@ export function authorize(i: {
   pure org-role checks, but `requirePermission` is preferred because it also covers grants/links and
   is identical to what the DO runs.)
 - **Durable Object (single writer):** the DO re-authorizes **every mutation** against its **cached
-  membership + grants projection** (refreshed on change and by TTL, like the entitlement cache —
+  membership + grants projection** (refreshed on change and by TTL, like the entitlement cache -
   `data-model.md`), using the same `authorize()`. The canonical store is Better Auth's `member`
   table in D1; the DO projection is for fast inline checks.
 
 **Trust boundary:** client → Worker (authenticated via Better Auth session) → DO (trusts the
-Worker-asserted principal — same security domain; the client never calls the DO directly).
+Worker-asserted principal - same security domain; the client never calls the DO directly).
 WebSocket connections are authorized at **upgrade** in the Worker and the principal is bound to the
 socket (`serializeAttachment`), so the DO authorizes each WS message too.
 
 **Two auth methods, one model.** A request is authenticated by a **session** (web) or an **API key**
-(programmatic) — both resolve to the same `Principal` (`api.md`). For an API-key request, `authorize()`
+(programmatic) - both resolve to the same `Principal` (`api.md`). For an API-key request, `authorize()`
 also takes the key's **`keyScopes`**, and the action must pass the role/grant check **and** the key
 scope (intersection). A key can only *narrow* its owner's permissions, never exceed them. API key
 `permissions` use the same `resource: [actions]` vocabulary as the statements above.
@@ -233,7 +233,7 @@ scope (intersection). A key can only *narrow* its owner's permissions, never exc
 ## Better Auth wiring & checks
 
 ```ts
-// apps/web — auth config
+// apps/web - auth config
 import { organization, admin as adminPlugin } from "better-auth/plugins";
 import { ac, NAMESPACE_ROLES } from "@byos3/core/authz";
 import { platformAc, PLATFORM_ROLES } from "@byos3/core/authz/platform";
@@ -246,7 +246,7 @@ export const auth = betterAuth({
         defaultVolumeId: { type: "string", required: false },
       } } } }),
     adminPlugin({ ac: platformAc, roles: PLATFORM_ROLES, adminRoles: ["admin", "support"], defaultRole: "user" }),
-    // stripe(...) — see billing.md
+    // stripe(...) - see billing.md
   ],
 });
 ```
@@ -255,13 +255,13 @@ export const auth = betterAuth({
   (uses the session's **active organization** + member role); `auth.api.userHasPermission({ body:{ role, permissions } })`
   for the platform/admin plugin.
 - **Client check:** `authClient.organization.hasPermission({ permissions })` (round-trip) or
-  `authClient.organization.checkRolePermission({ role, permissions })` (sync, static roles — for UI
+  `authClient.organization.checkRolePermission({ role, permissions })` (sync, static roles - for UI
   gating). Admin equivalents on `authClient.admin`.
 - **Active organization** = the namespace the user is currently in (`setActive` /
   `useActiveOrganization`); server checks resolve the member role from it.
 - **Invitations** (org plugin) drive team onboarding; accepting creates a `member` row + (we) emit
   a journal membership op so the DO projection updates and connected clients are notified.
-- **Dynamic access control** (DB-stored custom org roles) is available but **deferred** — our four
+- **Dynamic access control** (DB-stored custom org roles) is available but **deferred** - our four
   roles are static for now.
 
 ## Billing tie-in
@@ -280,10 +280,10 @@ for inline authz. Update `data-model.md` references accordingly.
 
 - **Deny-by-default**, evaluated identically at the edge and in the single-writer DO (no path
   mutates without an authz check).
-- **One source of truth** (`@byos3/core/authz`) — Better Auth and our enforcement can't drift.
+- **One source of truth** (`@byos3/core/authz`) - Better Auth and our enforcement can't drift.
 - **Least privilege roles**: reader can't write, writer can't manage members/volumes/billing, only
   owner touches billing and namespace deletion.
-- **Platform staff get no ambient tenant-data access** — content is reached only via audited
+- **Platform staff get no ambient tenant-data access** - content is reached only via audited
   impersonation, which then obeys namespace RBAC.
 - **Grants are subtree-scoped** and reuse role definitions, so a share can never exceed the role's
   actions.
@@ -291,17 +291,17 @@ for inline authz. Update `data-model.md` references accordingly.
 
 ## Where the code lives
 
-- `@byos3/core/authz` — `ac`, `statement`, `NAMESPACE_ROLES`, `PLATFORM_ROLES`, `roleCan`,
+- `@byos3/core/authz` - `ac`, `statement`, `NAMESPACE_ROLES`, `PLATFORM_ROLES`, `roleCan`,
   `authorize()`, grant/link types. Imported by the Better Auth config **and** the DO.
-- `apps/web` — Better Auth plugin config, `requirePermission` edge helper, D1 `grant`/`shareLink`
+- `apps/web` - Better Auth plugin config, `requirePermission` edge helper, D1 `grant`/`shareLink`
   repositories, WS upgrade authorization.
-- The `Namespace` DO — membership/grant projection + inline `authorize()` on every mutation.
+- The `Namespace` DO - membership/grant projection + inline `authorize()` on every mutation.
 
 ## Do / don't
 
 - ✅ Gate every namespace operation with `requirePermission` (edge) and `authorize()` (DO).
-- ✅ Add a new permission as a statement action + role grant in `@byos3/core/authz` — nowhere else.
+- ✅ Add a new permission as a statement action + role grant in `@byos3/core/authz` - nowhere else.
 - ✅ Use impersonation (audited) for support, never a content-reading override.
-- ❌ Don't check `role === "admin"` inline — call `roleCan`/`authorize`.
+- ❌ Don't check `role === "admin"` inline - call `roleCan`/`authorize`.
 - ❌ Don't define roles/permissions in `apps/web`; they live in `@byos3/core/authz`.
-- ❌ Don't trust a client-supplied role/permission — resolve it server-side from the session.
+- ❌ Don't trust a client-supplied role/permission - resolve it server-side from the session.

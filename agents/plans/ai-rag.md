@@ -1,4 +1,4 @@
-# Deferred — AI / RAG across documents
+# Deferred - AI / RAG across documents
 
 **Status: deferred** (build when prioritized). The seam is designed in now; see
 `agents/docs/ai-rag.md` for the architecture and the single sanctioned exception to the no-bytes

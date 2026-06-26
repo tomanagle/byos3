@@ -1,7 +1,7 @@
-# Storage — bring-your-own S3 (connectors & volumes)
+# Storage - bring-your-own S3 (connectors & volumes)
 
 Users supply their own object storage. We sign requests so clients transfer bytes **directly** to
-the user's bucket. **Bytes never pass through the Worker** (sole exception: the AI indexer —
+the user's bucket. **Bytes never pass through the Worker** (sole exception: the AI indexer -
 `ai-rag.md`).
 
 > Per-provider credential setup, exact least-privilege permissions, endpoints, and quirks live in
@@ -40,9 +40,9 @@ not an account-root key. Volume count is a **plan limit** (`billing.md`).
 
 ## Presigned URLs
 
-- The Worker signs **SigV4** with **aws4fetch** (the only viable approach on Workers — no AWS SDK).
+- The Worker signs **SigV4** with **aws4fetch** (the only viable approach on Workers - no AWS SDK).
 - Mint **PUT** for upload, **GET** for download. (Browser **POST** form uploads are unsupported on
-  R2 and B2 — always use PUT.)
+  R2 and B2 - always use PUT.)
 - Treat URLs as **bearer tokens**: short TTL (minutes), pin `Content-Type` (and `Content-Length`
   where possible), scope to one exact key.
 
@@ -67,7 +67,7 @@ Reliable subset: SigV4, `PutObject`/`GetObject`/`HeadObject`/`DeleteObject(s)`, 
 | Egress | ~$0.09/GB | **$0 (free)** | free to 3× stored/mo, then ~$0.01/GB |
 | Max single object | 50 TB | ~4.995 TB | 10 TB |
 
-**Do not treat ETag as a content hash** — for multipart it's `md5(part md5s)-N`, not the object
+**Do not treat ETag as a content hash** - for multipart it's `md5(part md5s)-N`, not the object
 hash. Compute **SHA-256 client-side** and keep it as our integrity + dedup source of truth (in
 the `version` row and `chunk_index`).
 
@@ -76,7 +76,7 @@ the `version` row and `chunk_index`).
 Required on **every** user bucket for browser transfer. Set `AllowedOrigins` (your app origin, not
 `*` in prod), `AllowedMethods: [GET, PUT, HEAD]`, **`AllowedHeaders: ["*"]`** (a presigned PUT always
 preflights, and the File body carries a Content-Type, so a missing `AllowedHeaders` makes the
-preflight fail with "No 'Access-Control-Allow-Origin' header" — the #1 first-connect gotcha), and
+preflight fail with "No 'Access-Control-Allow-Origin' header" - the #1 first-connect gotcha), and
 **`ExposeHeaders: [ETag]`** (the browser must read ETag to complete multipart).
 
 **Implementation.** The canonical rule lives once in `@byos3/s3` (`corsConfigXml` for `PutBucketCors`,
@@ -84,27 +84,27 @@ preflight fail with "No 'Access-Control-Allow-Origin' header" — the #1 first-c
 (`services/setupCors`): if the provider exposes the S3 CORS API (`capabilities.corsViaS3Api`) it
 attempts `PutBucketCors` with the connector credential; on success the user does nothing. If the
 provider can't (Wasabi auto-wildcard, MinIO env var) or the credential lacks permission (e.g. an R2
-object-RW token 403s — R2 needs an admin/edit-scoped token), the result carries the exact policy JSON
+object-RW token 403s - R2 needs an admin/edit-scoped token), the result carries the exact policy JSON
 + a provider docs link, which the UI shows for copy-paste (`components/app/cors-setup.tsx`).
 
 ## Garbage collection (per volume)
 
 Chunks are content-addressed and refcounted (`chunk_index`). When versions age out past the plan's
 history window, decrement refcounts; a **Workflow** mark-sweeps chunks at refcount 0 and deletes
-them from that volume's bucket. GC must be **idempotent** and conservative — never delete a chunk
+them from that volume's bucket. GC must be **idempotent** and conservative - never delete a chunk
 still referenced by any live version. Run per volume.
 
-**Dedup/GC race (Dropbox's classic bug — `foundational-considerations.md` §7):** a chunk can be
+**Dedup/GC race (Dropbox's classic bug - `foundational-considerations.md` §7):** a chunk can be
 GC'd at the moment a new commit dedups against it. Guard with two rules: (1) the **journal is the
 source of truth for liveness** and deletion **lags reference-drop by a grace period**; (2) **commit
-re-verifies chunk existence** (HEAD) — if a deduped chunk is missing (GC race *or* the user deleted
+re-verifies chunk existence** (HEAD) - if a deduped chunk is missing (GC race *or* the user deleted
 it out-of-band), the client re-uploads it. The user's bucket is **mutable and untrusted**: never
 assume a referenced chunk still exists; verify on read, surface a "needs re-upload" state, and let
 the reconciliation Workflow detect drift.
 
 ## Egress/cost guidance (surface to users)
 
-Direct-from-bucket download is exactly right because **the user pays their own egress** — proxying
+Direct-from-bucket download is exactly right because **the user pays their own egress** - proxying
 would dump that cost on us. Download-heavy → R2 (zero egress); cold/archival → B2 (cheapest
 storage). R2/B2 also bill per operation, so batch and prefer paginated `ListObjectsV2` over chatty
 calls.

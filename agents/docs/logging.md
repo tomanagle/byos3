@@ -1,21 +1,21 @@
-# Logging — wide events / canonical log lines
+# Logging - wide events / canonical log lines
 
 We follow the philosophy from **https://loggingsucks.com** (Boris Tane) and the
 `logging-best-practices` skill: **log _what happened to this request_, not _what your code is
 doing_.** Instead of scattering log lines, we emit **one wide, structured event per request per
-service hop** — a single canonical log line carrying 50+ high-cardinality fields, built up over
+service hop** - a single canonical log line carrying 50+ high-cardinality fields, built up over
 the request and emitted once at the end.
 
 > A single request creates a single large span. Scattered `console.log` calls are an anti-pattern
-> here — if you reach for one, you almost certainly want to add a field to the request's wide
+> here - if you reach for one, you almost certainly want to add a field to the request's wide
 > event instead.
 
 ## The package: `@byos3/logging`
 
 A tiny, dependency-light logger modelled as **spans**. The **root `Span` IS the canonical wide
 event**: a mutable bag of fields you enrich through the request, emitted exactly once as one JSON
-line at `end()`. A child `span(name)` times a sub-operation — its fields fold into the *same* event
-under a `<name>.` prefix and it stamps `<name>.duration_ms` — so you still get one event per
+line at `end()`. A child `span(name)` times a sub-operation - its fields fold into the *same* event
+under a `<name>.` prefix and it stamps `<name>.duration_ms` - so you still get one event per
 request, now with nested timings. Children never emit their own line.
 
 ```ts
@@ -43,13 +43,13 @@ try {
 ```
 
 API surface (keep it this small):
-- `createServiceLogger({ service }).createSpan(seed)` (or `createSpan(seed, opts)`) — start the root
+- `createServiceLogger({ service }).createSpan(seed)` (or `createSpan(seed, opts)`) - start the root
   span; auto-attaches environment context.
-- `span.set(fields)` / `span.set(key, value)` — merge high-dimensionality fields (last-write-wins).
-- `span.span(name, seed?)` — open a child span; its `set`/`setError` write under `<name>.` and
+- `span.set(fields)` / `span.set(key, value)` - merge high-dimensionality fields (last-write-wins).
+- `span.span(name, seed?)` - open a child span; its `set`/`setError` write under `<name>.` and
   `end()` stamps `<name>.duration_ms`. Use for phases (`presign`, `do`, `bucket`). Nestable.
-- `span.setError(err)` — record `error.message` + `error.type` (never the stack as a string blob).
-- `span.end()` — child: stamp its `<name>.duration_ms`; root: stamp `duration_ms` + flush ONE JSON
+- `span.setError(err)` - record `error.message` + `error.type` (never the stack as a string blob).
+- `span.end()` - child: stamp its `<name>.duration_ms`; root: stamp `duration_ms` + flush ONE JSON
   line to `console.log` (Cloudflare ingests it). Idempotent. The root `end()` must run in a `finally`.
 
 There is **one logger**, configured once. Two levels only: `info` (normal) and `error`. Never log
@@ -60,7 +60,7 @@ unstructured strings; never `console.log` raw values in handlers.
 Create the span in **middleware** and stash it. In `apps/web` it rides the server-fn context
 (`context.span`, set by `loggingMiddleware`); in `apps/api` (Hono) use `c.set("span", span)` /
 `c.get("span")`. Within deeper call stacks use `AsyncLocalStorage` (available under `nodejs_compat`)
-so any function can reach the current span. Handlers add **business context only** — the middleware
+so any function can reach the current span. Handlers add **business context only** - the middleware
 owns timing, status, environment, and emission.
 
 ## One event per hop, correlated by `traceId`
@@ -95,7 +95,7 @@ couldn't commit a 2 GB file to their B2 volume"*, not just *"commit failed"*.
 
 Keep **100%** of: errors, requests over p99 latency, team/VIP accounts, and feature-flag rollouts.
 Randomly sample fast successful requests at **1–5%**. Sampling happens at the pipeline, not by
-dropping `event.set()` calls — always build the full event; decide whether to keep it at emit/ship.
+dropping `event.set()` calls - always build the full event; decide whether to keep it at emit/ship.
 
 ## Cloudflare delivery
 

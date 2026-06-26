@@ -14,7 +14,7 @@ sources:
   - 'tomanagle/byos3:agents/docs/code-architecture.md'
 ---
 
-# @byos3/crypto — CredentialVault
+# @byos3/crypto - CredentialVault
 
 Connector secrets are **envelope-encrypted**: a fresh random data key per payload encrypts the
 secret (AES-GCM); the platform root key (`CREDENTIAL_ENCRYPTION_KEY`) wraps that data key. Only the
@@ -25,7 +25,7 @@ ciphertext (`secretCipher`) is stored in D1. The plaintext exists in memory only
 ```ts
 import { CredentialVault } from "@byos3/crypto";
 
-// The root key is the platform secret CREDENTIAL_ENCRYPTION_KEY (32 bytes, base64) — distinct from
+// The root key is the platform secret CREDENTIAL_ENCRYPTION_KEY (32 bytes, base64) - distinct from
 // any user credential. Read it once at the composition root, never elsewhere.
 const vault = new CredentialVault(env.CREDENTIAL_ENCRYPTION_KEY);
 
@@ -39,7 +39,7 @@ const secret = await vault.open(cipher);                // → plaintext, only w
 
 ```ts
 // Sealed-credential capability: the secret is opened ONLY inside Connector.driver() and captured
-// privately by the driver closure — it's never a field, getter, or log on the entity.
+// privately by the driver closure - it's never a field, getter, or log on the entity.
 async driver(bucket: string) {
   const secret = await this.deps.vault.open(this.record.secretCipher); // plaintext lives only here
   return this.deps.driverFactory({ /* …, */ secret, bucket });          // captured by the adapter
@@ -96,6 +96,6 @@ const KEY = "8lt8yQR5…"; // hardcoded / shipped to the browser
 
 Correct:
 ```ts
-// .dev.vars locally (gitignored); wrangler secret / SOPS in prod. Server-only; never in a client bundle.
+// .dev.vars locally (gitignored); wrangler secret (set in CI from GitHub secrets) in prod. Server-only; never in a client bundle.
 ```
 Source: agents/docs/secrets.md.

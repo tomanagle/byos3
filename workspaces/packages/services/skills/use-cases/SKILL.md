@@ -14,10 +14,10 @@ sources:
   - 'tomanagle/byos3:agents/docs/api.md'
 ---
 
-# @byos3/services — use-cases
+# @byos3/services - use-cases
 
 **One core, two transports.** Every capability is a `@byos3/services` use-case. The web's TanStack
-server functions and the `apps/api` Hono routes are *thin wrappers* over the same use-case — parity
+server functions and the `apps/api` Hono routes are *thin wrappers* over the same use-case - parity
 is structural. **All business logic and authorization live in the service**, never in a transport.
 
 ## Setup
@@ -41,13 +41,13 @@ export async function downloadUrl(ctx: ServiceContext, input: { volumeId: string
 ## Core patterns
 
 ```ts
-// Transport stays thin — static imports, validate input, build ctx, call the use-case, map errors.
+// Transport stays thin - static imports, validate input, build ctx, call the use-case, map errors.
 // apps/api (Hono): app.openapi(route, (c) => c.json(await connectBucket(c.get("ctx"), c.req.valid("json"))))
 // apps/web (server fn): createServerFn().middleware([authMiddleware]).inputValidator(ConnectBucketInput)
 //                         .handler(({ context, data }) => connectBucket(context.ctx, data))
 ```
 
-Both transports validate the **same `@byos3/protocol` schema object** (e.g. `ConnectBucketInput`) — one
+Both transports validate the **same `@byos3/protocol` schema object** (e.g. `ConnectBucketInput`) - one
 schema validates and (in the API) documents.
 
 ## Common Mistakes
@@ -89,7 +89,7 @@ const { connectBucket } = await import("@byos3/services"); // banned
 
 Correct:
 ```ts
-import { connectBucket } from "@byos3/services"; // static — server.handlers routes & Hono routers are server-only
+import { connectBucket } from "@byos3/services"; // static - server.handlers routes & Hono routers are server-only
 ```
 TanStack Start keeps `server.handlers` modules (and their imports) out of the client bundle, so static imports are safe. Source: agents/docs/code-architecture.md.
 

@@ -1,10 +1,10 @@
-# Phase 3 — Fixed-size blocks, dedup & safe GC
+# Phase 3 - Fixed-size blocks, dedup & safe GC
 
 **Goal:** sub-file dedup + safe garbage collection. Swap the whole-file chunker for **fixed-size
 blocks** (~4–8 MB, aligned to S3 multipart parts), content-addressed, so identical blocks dedup and
 only changed blocks transfer; GC unreferenced blocks safely. **The blocklist data model does not
-change** — a chunker + reassembler swap plus GC. (Dropbox uses **fixed blocks + rsync deltas, not
-CDC/Rabin** — verified in `agents/docs/foundational-considerations.md` §3. Sub-file byte-delta is
+change** - a chunker + reassembler swap plus GC. (Dropbox uses **fixed blocks + rsync deltas, not
+CDC/Rabin** - verified in `agents/docs/foundational-considerations.md` §3. Sub-file byte-delta is
 deferred to the desktop daemon, which has the old version locally.)
 
 Design refs: `sync-engine.md`, `storage-byo-s3.md`, `data-model.md`.

@@ -1,6 +1,6 @@
-# Phase 5 — Sharing & teams
+# Phase 5 - Sharing & teams
 
-**Goal:** collaboration — shared folders, public links, and team workspaces with seat-based
+**Goal:** collaboration - shared folders, public links, and team workspaces with seat-based
 billing. Namespaces/ACL were designed in from Phase 2, so this activates them.
 
 Design refs: `namespaces-and-acl.md`, `billing.md`, `auth.md`, `storage-byo-s3.md`.
@@ -10,7 +10,7 @@ Design refs: `namespaces-and-acl.md`, `billing.md`, `auth.md`, `storage-byo-s3.m
 - **Team namespaces:** create a team, a team namespace, invite members (Better Auth invites +
   `member` rows), roles (owner/admin/writer/reader).
 - **Shared folders:** promote a folder to a **shared namespace** (own org + journal + home volume)
-  and **mount** it into each member's root (the mount model — `namespaces-and-acl.md`,
+  and **mount** it into each member's root (the mount model - `namespaces-and-acl.md`,
   `foundational-considerations.md` §2); members get a role on the shared namespace, files inherit.
 - **Public links:** a share record + on-demand presigned GET (or tokenized Worker route) with
   optional expiry/password. Read-only; bytes still come direct from the volume.
@@ -35,4 +35,4 @@ Design refs: `namespaces-and-acl.md`, `billing.md`, `auth.md`, `storage-byo-s3.m
   stops access; expiry is honored.
 - Team billing reflects seat count; only owners manage billing.
 - A share never lets a user read outside the namespaces they're a member of (or a valid public-link
-  scope) — incl. via AI/RAG (see `ai-rag.md`).
+  scope) - incl. via AI/RAG (see `ai-rag.md`).

@@ -14,7 +14,7 @@ sources:
   - 'tomanagle/byos3:agents/docs/api.md'
 ---
 
-# @byos3/auth — Better Auth config
+# @byos3/auth - Better Auth config
 
 `createAuth({ db, secret, trustedOrigins, baseURL })` is the single Better Auth instance shared by
 both Workers. A **namespace is a Better Auth organization**. Web authenticates by **session cookie**;
@@ -27,7 +27,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { organization } from "better-auth/plugins/organization";
 import { admin } from "better-auth/plugins/admin";
-import { apiKey } from "@better-auth/api-key"; // SEPARATE package — NOT in better-auth/plugins (BA ≥1.6)
+import { apiKey } from "@better-auth/api-key"; // SEPARATE package - NOT in better-auth/plugins (BA ≥1.6)
 import * as schema from "@byos3/db/auth-schema";
 
 export function createAuth(opts) {
@@ -51,7 +51,7 @@ const r = await auth.api.verifyApiKey({ body: { key } });
 const userId = r.key.referenceId;                 // NOT r.key.userId
 const keyScopes = r.key.permissions ?? undefined; // null = unrestricted (full owner role)
 
-// Mint a SCOPED key — server-only: pass userId, send NO headers (headers re-trigger the client guard).
+// Mint a SCOPED key - server-only: pass userId, send NO headers (headers re-trigger the client guard).
 await auth.api.createApiKey({ body: { userId, name, permissions: { file: ["read"] } } });
 ```
 
@@ -74,7 +74,7 @@ Source: agents/docs/auth.md.
 
 Wrong:
 ```ts
-const userId = result.key.userId; // undefined — the plugin generalized userId → referenceId
+const userId = result.key.userId; // undefined - the plugin generalized userId → referenceId
 ```
 
 Correct:

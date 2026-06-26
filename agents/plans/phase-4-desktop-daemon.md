@@ -1,4 +1,4 @@
-# Phase 4 — Native desktop sync daemon
+# Phase 4 - Native desktop sync daemon
 
 **Goal:** a real filesystem sync client (the true Dropbox experience): a local folder that mirrors
 a namespace, with background sync, selective sync, and conflicted copies. Reuses the server side
@@ -9,7 +9,7 @@ Design refs: `sync-engine.md` (three-tree model), `web-app.md` (the `/api/v1` co
 
 ## Approach
 
-- Shell: **Tauri** (smaller, native) or **Electron** (reuses TS/`@byos3/ui` directly) — decide at
+- Shell: **Tauri** (smaller, native) or **Electron** (reuses TS/`@byos3/ui` directly) - decide at
   phase start. Either way the sync logic is `@byos3/core` (already isomorphic).
 - **Three-tree engine:** maintain **Remote**, **Local**, and last-**Synced** trees; Synced is the
   merge base used to decide change direction and detect conflicts (per `sync-engine.md`).
@@ -37,4 +37,4 @@ Design refs: `sync-engine.md` (three-tree model), `web-app.md` (the `/api/v1` co
 - A file dropped in the local folder appears in the web app (and other devices) and vice-versa.
 - Offline edits sync correctly on reconnect; concurrent edits produce conflicted copies.
 - Selective sync materializes only chosen subtrees; bytes go direct to the bucket.
-- The daemon uses **only** `/api/v1` — no dependency on web-only server functions.
+- The daemon uses **only** `/api/v1` - no dependency on web-only server functions.

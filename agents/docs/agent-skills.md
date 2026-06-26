@@ -1,7 +1,7 @@
 # Agent Skills (shipped with the packages via TanStack Intent)
 
-byos3 ships **Agent Skills** — `SKILL.md` files that teach AI coding agents how to use each package
-correctly — *inside the npm packages themselves*, using **[`@tanstack/intent`](https://tanstack.com/intent)**.
+byos3 ships **Agent Skills** - `SKILL.md` files that teach AI coding agents how to use each package
+correctly - *inside the npm packages themselves*, using **[`@tanstack/intent`](https://tanstack.com/intent)**.
 The point: an agent's knowledge of byos3 travels with the package version it has installed, instead
 of depending on a model's training cutoff. Update a package → the new version brings updated skills.
 
@@ -46,7 +46,7 @@ Authored set today (all `type: core`):
   `intent edit-package-json`), plus a `repository` field with `directory` so sources resolve. A
   consumer who `npm i`s the package gets the `SKILL.md` in `node_modules`, and `intent install` wires
   it into their agent config. `intent list` is the **registry** (discovers skills across the
-  workspace *and* `node_modules` — incl. skills shipped by our own deps like `@tanstack/react-start`).
+  workspace *and* `node_modules` - incl. skills shipped by our own deps like `@tanstack/react-start`).
 - **Versioning:** a skill targets a `metadata.library_version`; it ships in the package tarball and
   versions with the package. **Skill history = the package's git/release history.**
 
@@ -63,7 +63,7 @@ bun run skills:list       # the registry: every intent-enabled package + its ski
   `cd` into the package and run `npx @tanstack/intent edit-package-json`; ensure `@tanstack/intent`
   is a devDependency.
 - **When a referenced doc changes:** regenerate the skill, bump `metadata.library_version`, and commit
-  — otherwise CI's `intent stale` step flags it.
+  - otherwise CI's `intent stale` step flags it.
 
 CI runs `intent validate` + `intent stale` (see `.github/workflows/ci.yml`). The skills are authored
 from `agents/docs/*`, so **change behavior → update the doc → regenerate the skill** in the same change.

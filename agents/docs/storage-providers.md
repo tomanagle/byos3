@@ -1,4 +1,4 @@
-# S3-compatible storage providers — credentials, permissions, quirks
+# S3-compatible storage providers - credentials, permissions, quirks
 
 Reference for every provider we (intend to) support as a **connector**. For each: how a user
 creates scoped credentials, the **minimum permissions** for our operation set, the endpoint/region
@@ -9,8 +9,8 @@ connectors/volumes use this, and `data-model.md` for the `connector`/`volume` ta
 
 `{ provider, accessKeyId, secretAccessKey, endpoint?, region?, bucket, prefix = "byos3/" }`.
 We validate, then store the secret envelope-encrypted (`secrets.md` / `crypto`). `endpoint` is
-optional only for providers that ship a default (AWS S3); for everything else — and **required** for
-`custom` — the user supplies it.
+optional only for providers that ship a default (AWS S3); for everything else - and **required** for
+`custom` - the user supplies it.
 
 ## Our operation set
 
@@ -26,7 +26,7 @@ optional only for providers that ship a default (AWS S3); for everything else �
 - **Validate with `ListObjectsV2(prefix="byos3/", max-keys=1)`, not `HeadBucket`.** It works
   identically everywhere and keeps AWS/Wasabi/MinIO `s3:prefix` policy conditions intact (a bare
   HeadBucket isn't matched by a prefix-conditioned `ListBucket`).
-- **Presigned PUT only** — never rely on browser POST (unsupported on R2/B2 and unneeded).
+- **Presigned PUT only** - never rely on browser POST (unsupported on R2/B2 and unneeded).
 - **ETag ≠ content hash** for multipart objects everywhere → trust our client-computed SHA-256
   (`sync-engine.md`). Expose `ETag` in CORS so the browser can read per-part ETags.
 - **`byos3/` is a security boundary only where IAM/policy can enforce it.** Where it can't
@@ -43,13 +43,13 @@ optional only for providers that ship a default (AWS S3); for everything else �
 | **DigitalOcean Spaces** | Spaces key (limited/full) | ✅ (limited key) | ❌ (key-level) | ✅ (S3 API + UI) | dc code (`nyc3`) | either | CDN endpoint ~8 MiB PUT cap |
 | **Scaleway** | IAM API key (project-wide) | ❌ (use bucket policy) | ✅ via bucket policy | ✅ | `fr-par`… | path/virtual | "preferred project" trap |
 | **Hetzner** | S3 key (project-wide) | ❌ (use bucket policy) | ✅ via bucket policy | ✅ (CLI only, no UI) | location (`fsn1`) | virtual-host | bucket-policy only; no IAM |
-| **Storj** | Access grant → S3 creds | ✅ (grant) | ✅ (grant path) | ❌ (gateway default) | any (`us-east-1`) | — | use 64 MB parts |
-| **Tigris** | IAM access key + policy | ✅ | ✅ (`s3:prefix`) | ✅ | `auto` | — | closest to AWS |
-| **iDrive e2** | console key (region+bucket) | ✅ (bucket list) | ❌ | ❌ (dashboard/region API) | real code | — | **per-user endpoint** |
+| **Storj** | Access grant → S3 creds | ✅ (grant) | ✅ (grant path) | ❌ (gateway default) | any (`us-east-1`) | - | use 64 MB parts |
+| **Tigris** | IAM access key + policy | ✅ | ✅ (`s3:prefix`) | ✅ | `auto` | - | closest to AWS |
+| **iDrive e2** | console key (region+bucket) | ✅ (bucket list) | ❌ | ❌ (dashboard/region API) | real code | - | **per-user endpoint** |
 | **MinIO** (community) | access key / svc account | ✅ (policy) | ✅ (`s3:prefix`) | ❌ (env var; AIStor-only API) | `us-east-1` | **required** | self-hosted |
 | **Google Cloud Storage** | HMAC key (service account) | ❌ (bucket-level IAM) | ❌ | ❌ (gcloud out-of-band) | `auto` | **required** | XML/interop API |
-| **Oracle OCI** | Customer Secret Key | ❌ (user policy) | ❌ | ❌ (**none — proxy needed**) | real id + namespace | **required** | ListObjectsV2→V1; **breaks no-bytes rule** |
-| **Custom** | user-supplied access key/secret | — (user's call) | — | ❓ (unknown — operator sets it) | ignored (`any`) | **required** | escape hatch: any S3-compatible server via a user-supplied endpoint |
+| **Oracle OCI** | Customer Secret Key | ❌ (user policy) | ❌ | ❌ (**none - proxy needed**) | real id + namespace | **required** | ListObjectsV2→V1; **breaks no-bytes rule** |
+| **Custom** | user-supplied access key/secret | - (user's call) | - | ❓ (unknown - operator sets it) | ignored (`any`) | **required** | escape hatch: any S3-compatible server via a user-supplied endpoint |
 
 Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown (depends on the server).
 
@@ -96,17 +96,17 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 - **Create creds:** R2 → Manage API Tokens → Create → **Account** token → permission group
   **Object Read & Write** → "Apply to specific buckets only". AKID = token id; **Secret = SHA-256
   of the token value** (dashboard shows it). Object groups work only over the S3 API (our case).
-- **Min scope:** permission group **Object Read & Write** on the one bucket — covers all object +
-  multipart ops. No JSON policy. **No prefix restriction on persistent tokens** — only via
+- **Min scope:** permission group **Object Read & Write** on the one bucket - covers all object +
+  multipart ops. No JSON policy. **No prefix restriction on persistent tokens** - only via
   [temporary credentials](https://developers.cloudflare.com/r2/api/s3/temporary-credentials/)
   (prefix/object-scoped, parent-token-derived; the right tool if we mint per-session client creds).
-  **CORS via S3 needs an Admin token** — prefer the user sets CORS out-of-band (dashboard/Wrangler)
+  **CORS via S3 needs an Admin token** - prefer the user sets CORS out-of-band (dashboard/Wrangler)
   and keep the app token object-only.
 - **Endpoint/region:** `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, region `auto`
   (jurisdictions: `.eu`/`.fedramp` hosts).
 - **CORS:** dashboard / `wrangler r2 bucket cors set` / `PutBucketCors` (admin). Exact `scheme://host`
   origins (no path); ~30s propagation.
-- **Gotchas:** presigned GET/HEAD/PUT/DELETE only — **no POST**; expiry 1s–7d; conditional reqs
+- **Gotchas:** presigned GET/HEAD/PUT/DELETE only - **no POST**; expiry 1s–7d; conditional reqs
   except `If-Range`; only `STANDARD`/`STANDARD_IA`; no KMS/object-lock/tagging.
 - **Docs:** [tokens](https://developers.cloudflare.com/r2/api/tokens/) ·
   [S3 get-started](https://developers.cloudflare.com/r2/get-started/s3/) ·
@@ -118,14 +118,14 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 - **Create creds:** B2 → Application Keys → Add a New Application Key → restrict to one bucket,
   set **File name prefix** = `byos3/`, access Read+Write, optionally tick "Allow List All Bucket
   Names" (needed for S3 bucket-level calls). `keyID`→AKID, `applicationKey`→secret (shown once).
-  **The master key does NOT work with the S3 API** — require a non-master key.
+  **The master key does NOT work with the S3 API** - require a non-master key.
 - **Min capabilities:** `listBuckets`, `listAllBucketNames`, `listFiles`, `readFiles`,
   `writeFiles`, `deleteFiles` (+ bucket + `byos3/` prefix). Prefix is enforced server-side.
 - **Endpoint/region:** `s3.<region>.backblazeb2.com` (e.g. `s3.us-west-001.backblazeb2.com`);
-  region = the middle segment. Single region per account — have the user paste the endpoint.
+  region = the middle segment. Single region per account - have the user paste the endpoint.
 - **CORS:** `PutBucketCors`/`GetBucketCors` supported via S3 API (AllowedOrigin non-empty;
   MaxAge 0–86400). **Rules set via S3 can't be edited via the native API** and vice-versa.
-- **Gotchas (important):** buckets **versioned by default** — `DeleteObject` without a `versionId`
+- **Gotchas (important):** buckets **versioned by default** - `DeleteObject` without a `versionId`
   only inserts a **delete marker** (old versions persist + bill). Delete by `versionId` or have
   users set a "keep last version" lifecycle rule. Multipart min part 5 MB.
 - **Docs:** [app keys](https://www.backblaze.com/docs/cloud-storage-create-and-manage-app-keys) ·
@@ -143,7 +143,7 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
   list-parts on `/byos3/*`).
 - **Endpoint/region:** `s3.<region>.wasabisys.com` (`us-east-1`, `eu-central-1`, `ap-northeast-1`,
   …); `s3.wasabisys.com` = legacy us-east-1 alias.
-- **CORS:** **NOT configurable — `PutBucketCors`/`GetBucketCors` unsupported.** Wasabi returns
+- **CORS:** **NOT configurable - `PutBucketCors`/`GetBucketCors` unsupported.** Wasabi returns
   automatic wildcard CORS (`Access-Control-Allow-Origin: *`, exposes all headers) when an `Origin`
   is present, so browser presigned PUT/GET "just works" but can't be tightened. Our adapter must
   **no-op** CORS calls for Wasabi (don't fail validation).
@@ -158,7 +158,7 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 
 - **Create creds:** Control Panel → Spaces → Access Keys → Create. **Limited access** key scoped
   to the bucket with **Read/Write/Delete** is the right BYO credential. Console-only (no API/CLI
-  for key creation). **Limited keys are mutually exclusive with bucket policies** — pick one.
+  for key creation). **Limited keys are mutually exclusive with bucket policies** - pick one.
 - **Min scope:** limited key, one bucket, Read/Write/Delete (no finer grain). Prefix not
   key-enforceable.
 - **Endpoint/region:** `https://<region>.digitaloceanspaces.com`; region = dc code (`nyc3`,`fra1`,…).
@@ -173,7 +173,7 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 ## Scaleway Object Storage
 
 - **Create creds:** IAM → API keys → Generate (attach to a user/application; set a **preferred
-  Project** — the key only operates in that project). Keys are **project-wide, not per-bucket**.
+  Project** - the key only operates in that project). Keys are **project-wide, not per-bucket**.
 - **Min scope:** IAM permission sets `ObjectStorageObjectsRead` + `…ObjectsWrite` +
   `…ObjectsDelete` + `ObjectStorageBucketsRead` (add `…BucketsWrite` if the app sets CORS). To
   confine to one bucket + prefix, attach a **bucket policy** (grammar `2023-04-17`, action allowed
@@ -182,7 +182,7 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 - **Endpoint/region:** `https://s3.<region>.scw.cloud`; region `fr-par`/`nl-ams`/`pl-waw`/`it-mil`.
 - **CORS:** `PutBucketCors`/`GetBucketCors` (S3 API) or Console.
 - **Gotchas:** the **preferred-project trap** (valid key, empty/denied because its project lacks
-  the bucket) — surface a clear validation error.
+  the bucket) - surface a clear validation error.
 - **Docs:** [IAM keys + Object Storage](https://www.scaleway.com/en/docs/iam/api-cli/using-api-key-object-storage/) ·
   [permission sets](https://www.scaleway.com/en/docs/iam/reference-content/permission-sets/) ·
   [bucket policy](https://www.scaleway.com/en/docs/object-storage/api-cli/bucket-policy/) ·
@@ -191,13 +191,13 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 ## Hetzner Object Storage
 
 - **Create creds:** Console → project → Security → S3 Credentials → Generate (Console only; shown
-  once). **Project-wide, valid for every bucket** — no per-key scoping. No IAM users/roles/STS.
+  once). **Project-wide, valid for every bucket** - no per-key scoping. No IAM users/roles/STS.
 - **Min scope:** **bucket policies only** (AWS-style JSON), principal
   `arn:aws:iam:::user/p<PROJECT_ID>:<ACCESS_KEY>`, `Resource` `[".../BUCKET",".../BUCKET/*"]`, the
   standard object-RW + list + multipart actions.
 - **Endpoint/region:** `https://<location>.your-objectstorage.com` (`fsn1`/`nbg1`/`hel1`); set
   region = location, **SigV4 + virtual-hosted**.
-- **CORS:** `PutBucketCors`/`GetBucketCors` via S3 API only (**no UI**) — the app must own it.
+- **CORS:** `PutBucketCors`/`GetBucketCors` via S3 API only (**no UI**) - the app must own it.
 - **Gotchas:** restricting a bucket to a key breaks the Console object browser (expected); 64 KB
   min billable object size; 750 req/s per bucket; some SDKs need payload signing disabled.
 - **Docs:** [generate keys](https://docs.hetzner.com/storage/object-storage/getting-started/generating-s3-keys/) ·
@@ -206,15 +206,15 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 
 ## Storj
 
-- **Create creds:** not IAM — an **access grant** (macaroon) exchanged for S3 creds. Console →
+- **Create creds:** not IAM - an **access grant** (macaroon) exchanged for S3 creds. Console →
   Access Keys → New → S3 Credentials (bucket-level only). For **prefix** scoping use the uplink
   CLI: `uplink share sj://BUCKET/byos3/ --register --readonly=false` (flags
-  `--disallow-reads/writes/lists/deletes`, `--not-after`). Restrictions are immutable — re-mint to
+  `--disallow-reads/writes/lists/deletes`, `--not-after`). Restrictions are immutable - re-mint to
   change.
 - **Min scope:** Read+Write+List+Delete on `sj://BUCKET/byos3/`. Encrypted-by-default: a
   passphrase mismatch yields empty listings, not errors.
 - **Endpoint/region:** `https://gateway.storjshare.io`; region any (`us-east-1`).
-- **CORS:** **unsupported via S3 API** — gateway applies a permissive default that exposes `ETag`
+- **CORS:** **unsupported via S3 API** - gateway applies a permissive default that exposes `ETag`
   (so presigned multipart works); not customizable. Adapter no-ops CORS.
 - **Gotchas:** segment size 64 MB → **use 64 MB multipart parts**; `ListObjectsV2`/range/
   `ListMultipartUploads` marked "partial" (test pagination); no ACLs.
@@ -243,11 +243,11 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 
 - **Create creds:** Dashboard → Access Keys → Create → pick **region** (key is region-bound),
   permission tier, bucket list. Secret shown once.
-- **Min scope:** bucket-level read/write/delete only — **no prefix scoping, no JSON policy** for
+- **Min scope:** bucket-level read/write/delete only - **no prefix scoping, no JSON policy** for
   end-user keys. Enforce `byos3/` in app code.
 - **Endpoint/region:** **per-user endpoint** `https://<unique>.<region>.idrivee2-<N>.com` (differs
-  per account!) — resolve via `GET /get_region_endpoint`, never hardcode. Region = real code.
-- **CORS:** per-region in the dashboard / region API — **not** via S3 `PutBucketCors`. Expose ETag
+  per account!) - resolve via `GET /get_region_endpoint`, never hardcode. Region = real code.
+- **CORS:** per-region in the dashboard / region API - **not** via S3 `PutBucketCors`. Expose ETag
   there for browser multipart.
 - **Gotchas:** multipart steps must complete within the presigned URL validity window.
 - **Docs:** [developer guide](https://www.idrive.com/s3-storage-e2/developer-guide) ·
@@ -259,11 +259,11 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 - **Create creds:** issue a **service account / access key** owned by an IAM user (not root):
   `mc admin accesskey create ALIAS user --access-key … --secret-key … --policy policy.json`.
   Inline policy can only *further restrict* the parent.
-- **Min policy:** AWS-style JSON — object RW + abort + list-parts on `arn:aws:s3:::BUCKET/byos3/*`;
+- **Min policy:** AWS-style JSON - object RW + abort + list-parts on `arn:aws:s3:::BUCKET/byos3/*`;
   `ListBucket`+`ListBucketMultipartUploads`+`GetBucketLocation` on the bucket with `s3:prefix`.
 - **Endpoint/region:** `scheme://host:9000`; region must be **`us-east-1`** (or `MINIO_SITE_REGION`)
   or SigV4 fails; **path-style required** (`forcePathStyle: true`).
-- **CORS:** community has **no `PutBucketCors` API** — set the server env var
+- **CORS:** community has **no `PutBucketCors` API** - set the server env var
   `MINIO_API_CORS_ALLOW_ORIGIN` (default `*`); the bucket-CORS API is AIStor-only. Adapter no-ops
   CORS for community MinIO.
 - **Gotchas:** HeadBucket returns 400 under virtual-hosted style (use path-style);
@@ -275,15 +275,15 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 
 The escape hatch: instead of picking a named provider, the user picks **Custom** and supplies their
 own **endpoint + access key + secret + bucket**. As long as the server speaks S3 (SigV4 +
-path-style addressing), it mounts and works — no provider-specific code path. This covers
+path-style addressing), it mounts and works - no provider-specific code path. This covers
 self-hosted servers, niche providers we haven't profiled, and **the MinIO fake bucket used by the
 e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
 
 - **Connect contract:** the **endpoint is required** (there is no default to fall back to). Region
   is accepted but treated as `any` (passed to SigV4; many servers ignore it / want `us-east-1`).
-- **Capabilities:** conservative defaults — `forcePathStyle: true`, `corsViaS3Api: false` (we can't
+- **Capabilities:** conservative defaults - `forcePathStyle: true`, `corsViaS3Api: false` (we can't
   assume the server exposes `PutBucketCors`; the operator may configure CORS out-of-band). Same
-  presigned, direct-to-bucket transfer path as every other provider — **bytes never touch the
+  presigned, direct-to-bucket transfer path as every other provider - **bytes never touch the
   worker**.
 - **e2e:** `bun run e2e` (Playwright, `workspaces/tests`) spins up MinIO, mounts it as a `custom`
   volume, and runs a presigned PUT→HEAD→GET→DELETE round-trip
@@ -296,11 +296,11 @@ e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
   ~60s before first use.
 - **Min scope:** grant the **service account** `roles/storage.objectUser` (objects + multipart).
   IAM is **bucket-level, not prefix-level** → `byos3/` is convention only; use a dedicated bucket.
-  HeadBucket (`storage.buckets.get`) and CORS (`storage.buckets.update`) need extra perms — keep
+  HeadBucket (`storage.buckets.get`) and CORS (`storage.buckets.update`) need extra perms - keep
   those out of the app's runtime SA.
 - **Endpoint/region:** `https://storage.googleapis.com`; region `auto`; **path-style**
   (`forcePathStyle: true`, required for dotted names).
-- **CORS:** **not** via S3 API — set out-of-band: `gcloud storage buckets update gs://BUCKET
+- **CORS:** **not** via S3 API - set out-of-band: `gcloud storage buckets update gs://BUCKET
   --cors-file=cors.json` (needs `storage.buckets.update`).
 - **Gotchas:** multipart S3-compatible but no preconditions, no MD5-as-hash; ListObjectsV2 via
   `list-type=2`; prefer presigned PUT over native POST.
@@ -319,9 +319,9 @@ e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
   list/multipart → `byos3/` not enforceable; use a dedicated bucket.
 - **Endpoint/region:** `https://<namespace>.compat.objectstorage.<region>.oraclecloud.com`; region
   = real OCI id; **path-style required** (`forcePathStyle`).
-- **CORS:** **none — not supported by the S3 or native API.** Browser cross-origin requests can't
+- **CORS:** **none - not supported by the S3 or native API.** Browser cross-origin requests can't
   get `Access-Control-Allow-Origin`.
-- **Gotchas — biggest:** **CORS impossible → browser-direct transfer is blocked, which breaks our
+- **Gotchas - biggest:** **CORS impossible → browser-direct transfer is blocked, which breaks our
   "bytes never through the Worker" rule.** OCI would require proxying bytes (a deliberate
   exception) or be **unsupported for browser clients**. Also: **`ListObjectsV2` not supported → use
   V1**; **disable `aws-chunked`** streaming (`chunkedEncodingEnabled=false`) or signatures fail;
@@ -333,7 +333,7 @@ e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
 
 ---
 
-## What this means for `packages/s3` — provider capability flags
+## What this means for `packages/s3` - provider capability flags
 
 Each provider adapter declares capabilities so the rest of the app branches on data, not
 `if (provider === …)` scattered everywhere:
@@ -343,12 +343,12 @@ interface ProviderCapabilities {
   corsViaS3Api: boolean;      // false → CORS set out-of-band by the user (Wasabi, Storj, iDrive, MinIO-community, GCS, OCI)
   corsAutomatic: boolean;     // provider returns permissive CORS automatically (Wasabi, Storj)
   prefixEnforceable: boolean; // false → byos3/ is convention only; recommend dedicated bucket (GCS, OCI, iDrive, DO)
-  presignPost: boolean;       // almost always false — we use PUT
+  presignPost: boolean;       // almost always false - we use PUT
   forcePathStyle: boolean;    // MinIO, GCS, OCI
   region: "real" | "auto" | "any" | "in-endpoint";
-  perUserEndpoint: boolean;   // iDrive e2 — must resolve dynamically
-  requiresProxy: boolean;     // OCI — no CORS → cannot do browser-direct transfer
-  versionedByDefault: boolean;// B2 — delete = soft delete; needs versionId/lifecycle
+  perUserEndpoint: boolean;   // iDrive e2 - must resolve dynamically
+  requiresProxy: boolean;     // OCI - no CORS → cannot do browser-direct transfer
+  versionedByDefault: boolean;// B2 - delete = soft delete; needs versionId/lifecycle
   recommendedPartSizeBytes: number; // Storj = 64 MB; others 8 MB default
 }
 ```
@@ -357,16 +357,16 @@ Consequences to implement:
 - **CORS is provider-specific.** Never assume `PutBucketCors`. On `corsViaS3Api:false` providers,
   the connect flow shows the user the exact CORS JSON/steps to apply themselves (or no-ops where
   CORS is automatic). Don't fail connect-validation over CORS.
-- **`requiresProxy` providers (OCI) cannot do browser-direct transfer** — either proxy bytes (an
+- **`requiresProxy` providers (OCI) cannot do browser-direct transfer** - either proxy bytes (an
   explicit, documented exception to the no-bytes rule, like the AI indexer) or mark them
   unsupported for web clients. Default: **unsupported in MVP**, revisit later.
 - **Validation** = `ListObjectsV2(prefix="byos3/", max-keys=1)` everywhere (V1 fallback for OCI).
 - **Delete/GC** must honor `versionedByDefault` (B2: delete by `versionId` or guide a lifecycle rule).
 - **Per-user endpoint** (iDrive e2) is resolved at connect and stored on the `connector`/`volume`.
 
-## Out of scope — non-S3 providers (OneDrive, SharePoint, Google Drive, Dropbox, Box)
+## Out of scope - non-S3 providers (OneDrive, SharePoint, Google Drive, Dropbox, Box)
 
-**Decision (2026-06-25): byos3 is "bring your own _S3-compatible_ storage" — full stop.** Non-S3
+**Decision (2026-06-25): byos3 is "bring your own _S3-compatible_ storage" - full stop.** Non-S3
 file services (Microsoft Graph, Google Drive, Dropbox, Box) are **deliberately out of scope**. They
 use OAuth2 + a file/folder REST model (not key-addressed blobs), and supporting them would dilute
 both the positioning (→ a generic, crowded "multi-cloud file" tool) and the architecture (OAuth
@@ -375,10 +375,10 @@ ecosystem (AWS, R2, B2, Wasabi, DO Spaces, Scaleway, Hetzner, Storj, Tigris, iDr
 GCS-interop) is the entire product.
 
 *If that strategy ever changed*, the `StorageDriver` port could absorb them as a separate adapter
-family — a connector `kind: "oauth"` (encrypted refresh token; the Worker mints short-lived access
+family - a connector `kind: "oauth"` (encrypted refresh token; the Worker mints short-lived access
 tokens), upload-sessions instead of presigned PUT, pre-authenticated download URLs (with
 `requiresProxy` for Google Drive), still storing content-addressed chunks in a dedicated app folder
-(Google `drive.file` scope). That is a possible future **"labs" connector at most — not the brand,
+(Google `drive.file` scope). That is a possible future **"labs" connector at most - not the brand,
 not the roadmap.**
 
 ## Support tiers (recommendation)

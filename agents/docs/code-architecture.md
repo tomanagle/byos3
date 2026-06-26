@@ -49,23 +49,23 @@ with `conventions.md` (house style) and `storage-providers.md` (capability flags
 Dependencies point **inward** toward `protocol`. Both Workers depend on `@byos3/services`; nothing
 depends on an app. `core`, `services`, and `s3` are **isomorphic** (only Web-std
 `fetch`/`SubtleCrypto`), so they run in the Worker, the browser, and the desktop daemon
-identically. The *only* server-only thing is the secret **value** the vault unwraps — never the
+identically. The *only* server-only thing is the secret **value** the vault unwraps - never the
 code (see "Security").
 
 ## The ports (the common interfaces)
 
-### `StorageDriver` — the one that matters most
+### `StorageDriver` - the one that matters most
 
 Every provider is reduced to this single interface. Provider differences live behind
 `capabilities`, not behind scattered `if (provider === …)`.
 
 ```ts
-// @byos3/s3 — public port
+// @byos3/s3 - public port
 export interface PresignedRequest {
   url: string;
   method: "GET" | "PUT";
   headers?: Record<string, string>;  // headers the client must echo (e.g. Content-Type)
-  expiresAt: string;                  // ISO; the URL is a bearer token — never log it
+  expiresAt: string;                  // ISO; the URL is a bearer token - never log it
 }
 
 export interface MultipartUpload {
@@ -91,12 +91,12 @@ export interface StorageDriver {
 
 ### Other ports
 
-- **Repositories** (`ConnectorRepository`, `VolumeRepository`, …) — interfaces declared in `core`;
+- **Repositories** (`ConnectorRepository`, `VolumeRepository`, …) - interfaces declared in `core`;
   concrete D1/Drizzle implementations live in `apps/web` (so `core` never imports D1).
-- **`Vault`** (`@byos3/crypto`) — `seal(plaintext) → cipher` / `open(cipher) → plaintext`. Envelope
+- **`Vault`** (`@byos3/crypto`) - `seal(plaintext) → cipher` / `open(cipher) → plaintext`. Envelope
   encryption under `CREDENTIAL_ENCRYPTION_KEY` (see `secrets.md`).
-- **`Logger`** (`@byos3/logging`) — the wide-event logger (`logging.md`).
-- **`DriverFactory`** — `(config) => StorageDriver`; production impl is `createDriver`, injectable
+- **`Logger`** (`@byos3/logging`) - the wide-event logger (`logging.md`).
+- **`DriverFactory`** - `(config) => StorageDriver`; production impl is `createDriver`, injectable
   for tests (a fake/MinIO-backed driver).
 
 ## The adapters (where S3 complexity is encapsulated)
@@ -106,7 +106,7 @@ Internal to `@byos3/s3`; only the port + factory + capability table are exported
 ```ts
 // @byos3/s3/src/factory.ts
 export function createDriver(config: DriverConfig): StorageDriver {
-  const caps = CAPABILITIES[config.provider];          // capabilities.ts — the matrix as data
+  const caps = CAPABILITIES[config.provider];          // capabilities.ts - the matrix as data
   switch (config.provider) {
     case "aws":
     case "wasabi":
@@ -186,7 +186,7 @@ export class Volume {
   }
 
   #prefix() { return this.record.prefix.endsWith("/") ? this.record.prefix : `${this.record.prefix}/`; }
-  /** Hard guard: every key is forced under the volume's prefix — you cannot presign outside it. */
+  /** Hard guard: every key is forced under the volume's prefix - you cannot presign outside it. */
   #scoped(key: string) {
     const k = key.startsWith(this.#prefix()) ? key : `${this.#prefix()}${key}`;
     if (!k.startsWith(this.#prefix())) throw new AppError("scope_violation");
@@ -205,13 +205,13 @@ request-scoped, and safe to construct per call.
 There are **three layers per request** and the rule is: *authn at the composition root, authz +
 logic in the service, nothing in the transport.*
 
-**1. The composition root** (`apps/web/src/server/ctx.ts`, `apps/api/src/ctx.ts`) — the ONLY module
+**1. The composition root** (`apps/web/src/server/ctx.ts`, `apps/api/src/ctx.ts`) - the ONLY module
 per app that reads bindings. It authenticates the caller into a `Principal` and wires adapters into
 a `ServiceContext`. Web resolves a Better Auth **session**; the API resolves an **API key** (→
 `keyScopes`). Returns `null`/throws `401` when unauthenticated.
 
 ```ts
-// apps/web/src/server/ctx.ts — authn (session) + wiring. Returns null if unauthenticated.
+// apps/web/src/server/ctx.ts - authn (session) + wiring. Returns null if unauthenticated.
 export async function createServiceContext(request: Request): Promise<ServiceContext | null> {
   const { auth } = await import("./auth");
   const session = await auth.api.getSession({ headers: request.headers });
@@ -231,11 +231,11 @@ export async function createServiceContext(request: Request): Promise<ServiceCon
 }
 ```
 
-**2. The use-case** (`@byos3/services`) — owns authorization + orchestration. Same function serves
+**2. The use-case** (`@byos3/services`) - owns authorization + orchestration. Same function serves
 both Workers, so parity is structural (`api.md`).
 
 ```ts
-// @byos3/services/src/volumes.ts — authorize, resolve entity, delegate. ALL the logic lives here.
+// @byos3/services/src/volumes.ts - authorize, resolve entity, delegate. ALL the logic lives here.
 export async function downloadUrl(ctx: ServiceContext, input: { volumeId: string; hash: string }) {
   const volume = await ctx.volumes.get(input.volumeId);          // hydrated entity
   await assertCan(ctx, volume.namespaceId, "file:read");         // RBAC + key-scope (rbac.md)
@@ -243,11 +243,11 @@ export async function downloadUrl(ctx: ServiceContext, input: { volumeId: string
 }
 ```
 
-**3. The transport** (a TanStack server route / server fn, or a Hono handler) — validate input,
+**3. The transport** (a TanStack server route / server fn, or a Hono handler) - validate input,
 build the context, call the service, map errors. No business logic.
 
 ```ts
-// apps/web/src/routes/api/v1/volumes/$id/download-url.ts — thin wrapper
+// apps/web/src/routes/api/v1/volumes/$id/download-url.ts - thin wrapper
 GET: async ({ request, params }) => {
   const hash = new URL(request.url).searchParams.get("hash") ?? "";
   if (!/^[a-f0-9]{64}$/.test(hash)) return json({ ok: false, error: "invalid_input" }, 400);
@@ -266,17 +266,17 @@ once, in `@byos3/services`.**
 
 ### About `new Volume({ id })`
 
-The ergonomics you want — `volume.presignGet(...)` — are exactly preserved. The one change from the
+The ergonomics you want - `volume.presignGet(...)` - are exactly preserved. The one change from the
 sketch: **resolve through the repository (`await ctx.volumes.get(id)`) instead of `new Volume({ id })`.**
 Why:
 
-- An entity built from just an `id` must do hidden async I/O to load its record/connector — but
+- An entity built from just an `id` must do hidden async I/O to load its record/connector - but
   constructors can't be async, so you'd get lazy loads that fail late, can't cache, and surface
   "not found" deep inside `presignGet`.
-- Reaching for the DB/credentials from inside the entity means **ambient access to secrets** — the
+- Reaching for the DB/credentials from inside the entity means **ambient access to secrets** - the
   opposite of what we want. The repository is the single, auditable place that loads a record,
   resolves its `Connector`, checks it exists, and injects deps.
-- `new Volume(record, deps)` still exists — it's what the repository calls. You just don't
+- `new Volume(record, deps)` still exists - it's what the repository calls. You just don't
   hand-construct entities with unresolved ids in app code.
 
 This is the **Repository + Entity (data-mapper)** shape, deliberately *not* Active Record (no
@@ -290,25 +290,25 @@ entity-owns-its-connection, no ambient globals).
   `Connector.driver()`, captured privately by the driver closure. No entity field, getter, or log
   path exposes it. The driver can *sign*, never *reveal*.
 - **Credential methods are server-only by construction.** The browser/daemon get no `Vault`, so
-  `presignGet`/`presignPut` simply aren't wired there — they call the server, which returns only a
+  `presignGet`/`presignPut` simply aren't wired there - they call the server, which returns only a
   `PresignedRequest`. This is how "bytes never through the Worker" stays true (`storage-byo-s3.md`).
 - **Prefix scoping is enforced in code.** `#scoped()` forces every key under the volume's prefix; you cannot
   presign outside the volume even if a caller passes a bad key.
-- **Presigned URLs are bearer tokens** — short TTL, pinned method/headers, never logged
+- **Presigned URLs are bearer tokens** - short TTL, pinned method/headers, never logged
   (`logging.md`).
 - **Provider divergence is data, not control flow.** Capability-gated methods (`putCors`) throw a
   typed `CapabilityError` instead of silently misbehaving on a provider that lacks the feature.
 
-## No dynamic imports — static-import server-only code
+## No dynamic imports - static-import server-only code
 
 Do **not** use `await import(...)` to hide server-only modules. In TanStack Start, a route file that
-exposes only `server.handlers` (and the `apps/api` Hono routers) is server-only by construction —
-the Start plugin keeps its imports out of the client bundle — so `cloudflare:workers`, the
+exposes only `server.handlers` (and the `apps/api` Hono routers) is server-only by construction -
+the Start plugin keeps its imports out of the client bundle - so `cloudflare:workers`, the
 composition root (`ctx.ts`), `@byos3/auth`, and `@byos3/services` are all **statically imported** at
 the top. Server-only logic that a *client component* would otherwise pull in belongs in a server
 function (`createServerFn`) or a `server.handlers` route, never behind a dynamic import.
 
-## Database access — per-request D1 session
+## Database access - per-request D1 session
 
 The composition root reads `db` from **`createSessionDb(env.DB)`** (`@byos3/db`) so reads route to
 the nearest D1 replica with monotonic-read consistency. Create it once per request (web `ctx.ts`, api
@@ -335,7 +335,7 @@ typed error in their wide event.
 - **Capabilities are greppable.** Provider differences are rows in `capabilities.ts`, not `if`s
   spread across the codebase.
 - **Testable by substitution.** Inject a fake `DriverFactory` or a MinIO-backed driver, an
-  in-memory repository, a no-op logger — no globals to stub. (See `s3-compatibility.md` for the
+  in-memory repository, a no-op logger - no globals to stub. (See `s3-compatibility.md` for the
   MinIO conformance harness.)
 
 ## Checklist (do / don't)
@@ -346,7 +346,7 @@ typed error in their wide event.
 - ✅ Depend on a port; obtain concrete impls only from the `ServiceContext` built at the composition root.
 - ✅ Get a driver via `connector.driver(bucket)`; let `Volume` scope keys.
 - ✅ Add a provider via a `CAPABILITIES` row (+ an override only if truly divergent).
-- ❌ Don't `new Volume({ id })` in app code — use `ctx.volumes.get(id)`.
+- ❌ Don't `new Volume({ id })` in app code - use `ctx.volumes.get(id)`.
 - ❌ Don't read `env`/bindings outside the composition root.
 - ❌ Don't store, return, or log a secret or a presigned URL.
 - ❌ Don't branch on `provider ===` for behavior that belongs in a capability flag.

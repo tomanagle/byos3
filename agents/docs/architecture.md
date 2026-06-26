@@ -26,11 +26,11 @@ content/blob path.** We own the control plane (on Cloudflare); the user owns the
   └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Control plane** — auth, the file namespace/tree, versions, sync coordination, presigning,
+- **Control plane** - auth, the file namespace/tree, versions, sync coordination, presigning,
   billing. Runs entirely on Cloudflare. Handles only tiny metadata payloads.
-- **Data plane** — the actual file bytes, content-addressed in the user's bucket(s). The client
+- **Data plane** - the actual file bytes, content-addressed in the user's bucket(s). The client
   transfers directly to/from the bucket using presigned URLs. We never proxy bytes (see golden
-  rule #1 in `AGENTS.md`) — Workers aren't a byte proxy, and *the user pays their own egress*.
+  rule #1 in `AGENTS.md`) - Workers aren't a byte proxy, and *the user pays their own egress*.
 
 ## Core concepts
 
@@ -72,4 +72,4 @@ content/blob path.** We own the control plane (on Cloudflare); the user owns the
 ## Scaling risk to design around
 
 A single hot namespace DO is a serialization bottleneck. Keep a sharding escape hatch (e.g.
-shard a very large namespace by folder subtree). Don't prematurely shard — just don't preclude it.
+shard a very large namespace by folder subtree). Don't prematurely shard - just don't preclude it.

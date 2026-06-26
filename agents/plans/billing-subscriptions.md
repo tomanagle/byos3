@@ -1,4 +1,4 @@
-# Phase 2.5 — Billing & subscriptions
+# Phase 2.5 - Billing & subscriptions
 
 **Goal:** require a paid plan for usage beyond the free tier; enforce entitlements. Can land any
 time after auth + namespaces exist; **must precede public launch.**

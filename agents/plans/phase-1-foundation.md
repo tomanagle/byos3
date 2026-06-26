@@ -1,8 +1,8 @@
-# Phase 1 — Foundation
+# Phase 1 - Foundation
 
 **Goal:** prove the BYO + direct-transfer model end to end. Auth, connect a bucket (connector +
 volume), upload/download a whole file via presigned URLs, see it in a flat list. Smallest thing
-that validates the core bet. (Builds on the Phase 0 scaffold — workspace, `apps/web`, D1, deploy
+that validates the core bet. (Builds on the Phase 0 scaffold - workspace, `apps/web`, D1, deploy
 already exist.)
 
 Design refs: `architecture.md`, `storage-byo-s3.md`, `data-model.md`, `monorepo.md`,
@@ -48,7 +48,7 @@ Folder tree, versioning history UI, cursor sync across devices, WebSockets, bloc
 
 ## Acceptance criteria
 
-- A new user can sign up, connect an R2 bucket, upload a file, and download it back — **bytes go
+- A new user can sign up, connect an R2 bucket, upload a file, and download it back - **bytes go
   browser↔bucket, never through the Worker** (verify in network logs).
 - Re-uploading an identical file uploads **zero** chunks (dedup hit on `chunk_index`).
 - Credentials are stored encrypted; no secret or presigned URL appears in logs.

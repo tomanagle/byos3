@@ -1,7 +1,7 @@
-# Phase 2 — A real drive & multi-device sync
+# Phase 2 - A real drive & multi-device sync
 
-**Goal:** turn the flat list into a real drive — folder tree, versioning, multi-device cursor
-sync, real-time notifications — across one or more mounted volumes.
+**Goal:** turn the flat list into a real drive - folder tree, versioning, multi-device cursor
+sync, real-time notifications - across one or more mounted volumes.
 
 Design refs: `sync-engine.md`, `data-model.md`, `namespaces-and-acl.md`, `web-app.md`.
 
@@ -19,7 +19,7 @@ Design refs: `sync-engine.md`, `data-model.md`, `namespaces-and-acl.md`, `web-ap
   (`foundational-considerations.md` §4)
 - **Real-time:** hibernating WebSocket per namespace; "poke" → clients pull deltas; TanStack Query
   invalidation.
-- Device registry (`device` table) — foundation for device-count entitlement.
+- Device registry (`device` table) - foundation for device-count entitlement.
 - Basic reconciliation Workflow (Cron) listing each volume vs the journal, flagging drift.
 - Add B2 and AWS S3 adapters in `packages/s3` (provider matrix in `storage-byo-s3.md`).
 
@@ -34,10 +34,10 @@ Design refs: `sync-engine.md`, `data-model.md`, `namespaces-and-acl.md`, `web-ap
 6. Reconciliation Workflow + Cron trigger.
 7. B2 + S3 adapters; CORS preset helpers per provider.
 8. Certify each new provider with the **byos3 ceph/s3-tests profile** before enabling it; record
-   its capability flags in `storage-providers.md`. `requiresProxy` providers (e.g. OCI — no CORS)
+   its capability flags in `storage-providers.md`. `requiresProxy` providers (e.g. OCI - no CORS)
    are **web-unsupported in MVP**; record the flag. See `agents/docs/s3-compatibility.md`.
 
-9. **API keys + OpenAPI**: Better Auth `apiKey` plugin — create/list/rotate/revoke (web + `/api/v1`),
+9. **API keys + OpenAPI**: Better Auth `apiKey` plugin - create/list/rotate/revoke (web + `/api/v1`),
    per-key **scopes** (∩ RBAC), rate limits, expiry; finalize the unified session-or-key auth
    middleware; generate **OpenAPI** from `@byos3/protocol`. See `agents/docs/api.md`.
 
