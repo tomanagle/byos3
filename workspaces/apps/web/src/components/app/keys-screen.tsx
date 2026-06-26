@@ -49,7 +49,7 @@ export function KeysScreen() {
   const keys = useQuery({ queryKey: KEYS_QUERY, queryFn: () => listApiKeys() });
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-6">
+    <div className="container py-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-xl font-semibold tracking-tight">API keys</h1>

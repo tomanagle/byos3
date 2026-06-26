@@ -62,6 +62,16 @@
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
+/* Centered page container for app screens - replaces ad-hoc `mx-auto max-w-* px-6`. Tailwind v4's
+   `@utility` fully replaces the built-in container, so we define centering, gutters, and a readable
+   max width here. Pair with a vertical-padding utility (e.g. `py-6`) at the call site. */
+@utility container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 42rem;
+  padding-inline: 1.5rem;
+}
+
 * {
   box-sizing: border-box;
   border-color: var(--color-border);
