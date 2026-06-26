@@ -18,6 +18,8 @@ export const user = sqliteTable("user", {
   banned: integer("banned", { mode: "boolean" }),
   banReason: text("ban_reason"),
   banExpires: integer("ban_expires", { mode: "timestamp_ms" }),
+  // stripe plugin (createCustomerOnSignUp)
+  stripeCustomerId: text("stripe_customer_id"),
 });
 
 export const session = sqliteTable("session", {
@@ -114,4 +116,21 @@ export const apikey = sqliteTable("apikey", {
   updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
   permissions: text("permissions"),
   metadata: text("metadata"),
+});
+
+// stripe plugin (subscriptions). `referenceId` is the owning namespace/organization id (billing is
+// org-scoped - billing.md); `seats` is the paid member count. One active sub per reference.
+export const subscription = sqliteTable("subscription", {
+  id: text("id").primaryKey(),
+  plan: text("plan").notNull(),
+  referenceId: text("reference_id").notNull(),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
+  status: text("status").notNull().default("incomplete"),
+  periodStart: integer("period_start", { mode: "timestamp_ms" }),
+  periodEnd: integer("period_end", { mode: "timestamp_ms" }),
+  cancelAtPeriodEnd: integer("cancel_at_period_end", { mode: "boolean" }),
+  seats: integer("seats"),
+  trialStart: integer("trial_start", { mode: "timestamp_ms" }),
+  trialEnd: integer("trial_end", { mode: "timestamp_ms" }),
 });

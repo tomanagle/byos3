@@ -1,12 +1,16 @@
 import { apiKey } from "@better-auth/api-key";
-import { betterAuth } from "better-auth";
+import { stripe as stripePlugin } from "@better-auth/stripe";
+import { betterAuth, type BetterAuthPlugin } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
 import { organization } from "better-auth/plugins/organization";
+import { and, eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
+import Stripe from "stripe";
 import { createId } from "@byos3/core";
 import { ac, NAMESPACE_ROLES, PLATFORM_ROLES, platformAc } from "@byos3/core/authz";
 import * as schema from "@byos3/db/auth-schema";
+import { PAID_LIMITS, PLAN_NAME } from "@byos3/protocol";
 
 // The single Better Auth configuration, shared by BOTH Workers (apps/web for sessions, apps/api for
 // API-key verification) so the auth model - tables, plugins, roles - is defined exactly once.
@@ -22,9 +26,55 @@ export interface CreateAuthOptions {
   secret?: string;
   baseURL?: string;
   trustedOrigins?: string[];
+  /** Billing (only wired when `secretKey` is set; api worker omits it). See billing.md. */
+  stripe?: {
+    secretKey?: string;
+    webhookSecret?: string;
+    priceMonthly?: string;
+    priceAnnual?: string;
+  };
+}
+
+/**
+ * The single seat-based plan. Billing is scoped to the namespace/organization (`referenceId` = org
+ * id), so `authorizeReference` only lets an org owner/admin manage that org's subscription. Returns
+ * null when no Stripe key is configured (core local dev + the api worker run without billing).
+ */
+function buildStripe(opts: CreateAuthOptions): BetterAuthPlugin | null {
+  const cfg = opts.stripe;
+  if (!cfg?.secretKey) return null;
+  const client = new Stripe(cfg.secretKey, { httpClient: Stripe.createFetchHttpClient() });
+  return stripePlugin({
+    stripeClient: client,
+    stripeWebhookSecret: cfg.webhookSecret ?? "",
+    createCustomerOnSignUp: true,
+    subscription: {
+      enabled: true,
+      plans: [
+        {
+          name: PLAN_NAME,
+          priceId: cfg.priceMonthly,
+          annualDiscountPriceId: cfg.priceAnnual,
+          limits: { ...PAID_LIMITS },
+        },
+      ],
+      // Org-scoped: only an owner/admin of the namespace may manage its billing.
+      authorizeReference: async ({ user, referenceId }) => {
+        const rows = await opts.db
+          .select({ role: schema.member.role })
+          .from(schema.member)
+          .where(
+            and(eq(schema.member.organizationId, referenceId), eq(schema.member.userId, user.id)),
+          )
+          .limit(1);
+        return rows[0]?.role === "owner" || rows[0]?.role === "admin";
+      },
+    },
+  }) as BetterAuthPlugin;
 }
 
 export function createAuth(opts: CreateAuthOptions) {
+  const stripe = buildStripe(opts);
   return betterAuth({
     secret: opts.secret,
     baseURL: opts.baseURL,
@@ -55,6 +105,8 @@ export function createAuth(opts: CreateAuthOptions) {
       // Programmatic auth. A key's `permissions` (Record<resource, actions[]>) become the request's
       // keyScopes, intersected with the owner's role in @byos3/services. Default header: x-api-key.
       apiKey(),
+      // Billing (Stripe). Mounts /api/auth/stripe/* incl. the webhook. Omitted without a key.
+      ...(stripe ? [stripe] : []),
     ],
     databaseHooks: {
       user: {
