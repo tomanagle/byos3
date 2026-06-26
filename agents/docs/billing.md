@@ -21,15 +21,15 @@ the billing code simple (`seats x price`, one entitlement set).
 | Sharing + RBAC (per-volume roles) | yes | yes | n/a (all tiers) |
 | Org-owned API keys | yes | yes | n/a (all tiers) |
 | Version history | 30 days | long / unlimited | planned (needs retention) |
-| Members / seats | just you | seat-based | partial (seats purchasable; org-invite flow pending) |
+| Members / seats | just you (1 seat) | seat-based | **yes** - org `membershipLimit`/`invitationLimit` |
 | Operations (commits/mo) | small monthly budget | generous budget | **yes** - Namespace DO meters commits |
 
 There is **no AI feature** and **no device cap** (earlier drafts listed an "AI quota" + a device
 limit - both removed; `devices`/`ai` are gone from `PlanLimits`). The free tier is a **permanent,
 metered on-ramp, not a trial**.
 These numbers live in `packages/protocol/src/billing.ts` (`FREE_LIMITS` / `PAID_LIMITS`); the resolver
-is `@byos3/services` `resolveEntitlement`. **Enforcement status above is honest** - only the volume
-cap is live today; the rest land as the remaining Phase 3 gates ship (do not advertise an
+is `@byos3/services` `resolveEntitlement`. **Enforcement status above is honest** - volumes, the op
+budget, and seats are live; version-history retention is the one remaining gate (do not advertise an
 unenforced limit as a paid-only feature in the UI). Sharing, live sync, and API keys are available
 on every tier.
 
@@ -42,6 +42,16 @@ event**. We never bill per volume or per share. **v1:** volumes can only be gran
 so "has access" == "is a paid seat" - trivial billing, no guest concept. **v2 (the data model
 already supports it):** external single-volume *guests* who use their own free account, do not
 consume your seats, capped per account to prevent abuse.
+
+**Seat enforcement (implemented).** The org plugin's dynamic `membershipLimit` returns the namespace's
+seat count (active/trialing subscription seats, else **1** - the owner alone on free), so a namespace
+can never have more members than seats. `invitationLimit` returns the *open* seats (`seats -
+members`), so you can't create more pending invitations than you can seat. Both are enforced by Better
+Auth itself, so direct API calls are gated, not just the UI. The web flow is the **Team** screen
+(`/team`): invite by email (role `reader|writer|admin`; owner is reserved), cancel a pending invite,
+remove a member. We ship **no email provider**, so a pending invite surfaces a copyable
+`/accept-invitation?id=<id>` link the inviter shares; the invitee accepts it once signed in. Adding
+seats is the Billing seat stepper (checkout) or the Stripe portal (active subs).
 
 ## Cost guardrail (the only real Cloudflare cost)
 

@@ -1,15 +1,16 @@
 import type { VolumeSummary } from "@byos3/services";
 import { Link } from "@tanstack/react-router";
-import { Activity, Boxes, CreditCard, Files, KeyRound, Plus } from "lucide-react";
+import { Activity, Boxes, CreditCard, Files, KeyRound, Plus, Users } from "lucide-react";
 import { providerFor } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
-export type View = "files" | "volumes" | "keys";
+export type View = "files" | "volumes" | "keys" | "team";
 
 const NAV: { id: View; label: string; icon: typeof Files }[] = [
   { id: "files", label: "All files", icon: Files },
   { id: "volumes", label: "Volumes", icon: Boxes },
   { id: "keys", label: "API keys", icon: KeyRound },
+  { id: "team", label: "Team", icon: Users },
 ];
 
 export function VolumeRail({

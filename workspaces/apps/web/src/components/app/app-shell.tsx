@@ -38,6 +38,7 @@ export function useWorkspace(): Workspace {
  * still "files" activity; only the bare /volumes manager highlights "Volumes". */
 function viewFor(pathname: string): View {
   if (pathname.startsWith("/keys")) return "keys";
+  if (pathname.startsWith("/team")) return "team";
   if (pathname === "/volumes" || pathname === "/volumes/") return "volumes";
   return "files";
 }
@@ -69,7 +70,9 @@ export function AppShell({ me }: { me: Me }) {
   const openVolume = (id: string) =>
     void navigate({ to: "/volumes/$volumeId", params: { volumeId: id } });
   const onView = (v: View) =>
-    void navigate({ to: v === "files" ? "/" : v === "volumes" ? "/volumes" : "/keys" });
+    void navigate({
+      to: v === "files" ? "/" : v === "volumes" ? "/volumes" : v === "keys" ? "/keys" : "/team",
+    });
 
   const workspace = useMemo<Workspace>(
     () => ({

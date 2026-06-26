@@ -75,6 +75,29 @@ function buildStripe(opts: CreateAuthOptions): BetterAuthPlugin | null {
   }) as BetterAuthPlugin;
 }
 
+type Db = CreateAuthOptions["db"];
+
+/**
+ * Seats a namespace is entitled to: an active/trialing subscription's seat count, else 1 (the owner
+ * alone, on the free tier). Drives the org member + invitation caps below. See billing.md.
+ */
+async function activeSeats(db: Db, orgId: string): Promise<number> {
+  const rows = await db
+    .select({ status: schema.subscription.status, seats: schema.subscription.seats })
+    .from(schema.subscription)
+    .where(eq(schema.subscription.referenceId, orgId));
+  const live = rows.find((r) => r.status === "active" || r.status === "trialing");
+  return live ? Math.max(1, live.seats ?? 1) : 1;
+}
+
+async function orgMemberCount(db: Db, orgId: string): Promise<number> {
+  const rows = await db
+    .select({ id: schema.member.id })
+    .from(schema.member)
+    .where(eq(schema.member.organizationId, orgId));
+  return rows.length;
+}
+
 export function createAuth(opts: CreateAuthOptions) {
   const stripe = buildStripe(opts);
   // GitHub OAuth, only when both credentials are present (otherwise email/password only).
@@ -94,6 +117,16 @@ export function createAuth(opts: CreateAuthOptions) {
       organization({
         ac,
         roles: NAMESPACE_ROLES,
+        // Seat gate (billing.md): a namespace may have at most `seats` members - the free tier is 1
+        // (owner only); an active subscription lifts it to its purchased seats. Pending invitations
+        // are capped to the OPEN seats, so you can never invite more people than you can seat. Both
+        // are enforced by Better Auth itself, so the cap holds for direct API calls, not just our UI.
+        membershipLimit: (_user, org) => activeSeats(opts.db, org.id),
+        invitationLimit: async ({ organization: org }) =>
+          Math.max(
+            0,
+            (await activeSeats(opts.db, org.id)) - (await orgMemberCount(opts.db, org.id)),
+          ),
         schema: {
           organization: {
             additionalFields: {

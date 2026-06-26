@@ -13,9 +13,11 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as AcceptInvitationRouteImport } from './routes/accept-invitation'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppVolumesRouteImport } from './routes/_app.volumes'
+import { Route as AppTeamRouteImport } from './routes/_app.team'
 import { Route as AppKeysRouteImport } from './routes/_app.keys'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppVolumesIndexRouteImport } from './routes/_app.volumes.index'
@@ -43,6 +45,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
   path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AcceptInvitationRoute = AcceptInvitationRouteImport.update({
+  id: '/accept-invitation',
+  path: '/accept-invitation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -55,6 +62,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppVolumesRoute = AppVolumesRouteImport.update({
   id: '/volumes',
   path: '/volumes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTeamRoute = AppTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
   getParentRoute: () => AppRoute,
 } as any)
 const AppKeysRoute = AppKeysRouteImport.update({
@@ -90,12 +102,14 @@ const AppVolumesVolumeIdRoute = AppVolumesVolumeIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
   '/billing': typeof AppBillingRoute
   '/keys': typeof AppKeysRoute
+  '/team': typeof AppTeamRoute
   '/volumes': typeof AppVolumesRouteWithChildren
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -103,12 +117,14 @@ export interface FileRoutesByFullPath {
   '/volumes/': typeof AppVolumesIndexRoute
 }
 export interface FileRoutesByTo {
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
   '/billing': typeof AppBillingRoute
   '/keys': typeof AppKeysRoute
+  '/team': typeof AppTeamRoute
   '/': typeof AppIndexRoute
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -118,12 +134,14 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
+  '/accept-invitation': typeof AcceptInvitationRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
   '/_app/billing': typeof AppBillingRoute
   '/_app/keys': typeof AppKeysRoute
+  '/_app/team': typeof AppTeamRoute
   '/_app/volumes': typeof AppVolumesRouteWithChildren
   '/_app/': typeof AppIndexRoute
   '/_app/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
@@ -135,12 +153,14 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/accept-invitation'
     | '/privacy'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
     | '/billing'
     | '/keys'
+    | '/team'
     | '/volumes'
     | '/volumes/$volumeId'
     | '/api/auth/$'
@@ -148,12 +168,14 @@ export interface FileRouteTypes {
     | '/volumes/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/accept-invitation'
     | '/privacy'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
     | '/billing'
     | '/keys'
+    | '/team'
     | '/'
     | '/volumes/$volumeId'
     | '/api/auth/$'
@@ -162,12 +184,14 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
+    | '/accept-invitation'
     | '/privacy'
     | '/sign-in'
     | '/sign-up'
     | '/terms'
     | '/_app/billing'
     | '/_app/keys'
+    | '/_app/team'
     | '/_app/volumes'
     | '/_app/'
     | '/_app/volumes/$volumeId'
@@ -178,6 +202,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
+  AcceptInvitationRoute: typeof AcceptInvitationRoute
   PrivacyRoute: typeof PrivacyRoute
   SignInRoute: typeof SignInRoute
   SignUpRoute: typeof SignUpRoute
@@ -216,6 +241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/accept-invitation': {
+      id: '/accept-invitation'
+      path: '/accept-invitation'
+      fullPath: '/accept-invitation'
+      preLoaderRoute: typeof AcceptInvitationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app': {
       id: '/_app'
       path: ''
@@ -235,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/volumes'
       fullPath: '/volumes'
       preLoaderRoute: typeof AppVolumesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/team': {
+      id: '/_app/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof AppTeamRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/keys': {
@@ -299,6 +338,7 @@ const AppVolumesRouteWithChildren = AppVolumesRoute._addFileChildren(
 interface AppRouteChildren {
   AppBillingRoute: typeof AppBillingRoute
   AppKeysRoute: typeof AppKeysRoute
+  AppTeamRoute: typeof AppTeamRoute
   AppVolumesRoute: typeof AppVolumesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -306,6 +346,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppBillingRoute: AppBillingRoute,
   AppKeysRoute: AppKeysRoute,
+  AppTeamRoute: AppTeamRoute,
   AppVolumesRoute: AppVolumesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
 }
@@ -314,6 +355,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
+  AcceptInvitationRoute: AcceptInvitationRoute,
   PrivacyRoute: PrivacyRoute,
   SignInRoute: SignInRoute,
   SignUpRoute: SignUpRoute,

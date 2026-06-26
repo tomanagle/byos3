@@ -12,6 +12,8 @@ session is resolved once at the root and every route branches on it.
 | `/volumes` | `routes/_app.volumes.index.tsx` | protected | connected-buckets manager |
 | `/volumes/:id` | `routes/_app.volumes.$volumeId.tsx` | protected | files workspace with volume `:id` as the active upload target |
 | `/keys` | `routes/_app.keys.tsx` | protected | API-key minting |
+| `/team` | `routes/_app.team.tsx` | protected | org members + seat-gated invitations (billing.md) |
+| `/accept-invitation?id=` | `routes/accept-invitation.tsx` | public | invitee joins an org (own centered page, not the workspace shell; prompts sign-in) |
 | `/sign-in`, `/sign-up` | `routes/sign-in.tsx`, `sign-up.tsx` | public | Better Auth forms (own `AuthShell`, not the workspace shell) |
 | `/api/auth/$`, `/api/ns/socket` | `routes/api/**` | n/a | server routes (Better Auth handler, namespace WebSocket) |
 
@@ -41,7 +43,7 @@ constant so the unused branch tree-shakes.
 
 ## The persistent shell (`_app` pathless layout)
 
-`routes/_app.tsx` is a pathless layout wrapping `/`, `/:id`, `/volumes`, `/keys`:
+`routes/_app.tsx` is a pathless layout wrapping `/`, `/:id`, `/volumes`, `/keys`, `/team`:
 
 - **Logged out** → it renders a bare `<Outlet />` so `/` can show the full-bleed landing page (no
   rail/top bar) and protected children redirect.
