@@ -37,6 +37,7 @@
     "workspaces/apps/web": {
       "name": "@byos3/web",
       "dependencies": {
+        "@better-auth/stripe": "^1.6.20",
         "@byos3/auth": "workspace:*",
         "@byos3/core": "workspace:*",
         "@byos3/crypto": "workspace:*",

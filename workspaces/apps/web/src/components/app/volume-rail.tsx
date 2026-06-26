@@ -1,5 +1,6 @@
 import type { VolumeSummary } from "@byos3/services";
-import { Activity, Boxes, Files, KeyRound, Plus } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Activity, Boxes, CreditCard, Files, KeyRound, Plus } from "lucide-react";
 import { providerFor } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
@@ -126,12 +127,15 @@ export function VolumeRail({
         Connect a bucket
       </button>
 
-      <div className="mt-auto border-t border-border p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Plan</span>
-          <span className="font-medium text-foreground">Pro</span>
-        </div>
-      </div>
+      <Link
+        to="/billing"
+        className="mt-auto flex items-center justify-between gap-2 border-t border-border p-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
+      >
+        <span className="inline-flex items-center gap-2.5">
+          <CreditCard className="size-[17px]" /> Billing
+        </span>
+        <span className="text-xs">Manage</span>
+      </Link>
     </aside>
   );
 }

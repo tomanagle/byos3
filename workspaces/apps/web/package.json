@@ -17,6 +17,7 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
+    "@better-auth/stripe": "^1.6.20",
     "@byos3/auth": "workspace:*",
     "@byos3/core": "workspace:*",
     "@byos3/crypto": "workspace:*",

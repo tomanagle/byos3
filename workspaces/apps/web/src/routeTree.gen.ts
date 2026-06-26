@@ -17,6 +17,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppVolumesRouteImport } from './routes/_app.volumes'
 import { Route as AppKeysRouteImport } from './routes/_app.keys'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppVolumesIndexRouteImport } from './routes/_app.volumes.index'
 import { Route as ApiNsSocketRouteImport } from './routes/api/ns/socket'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -61,6 +62,11 @@ const AppKeysRoute = AppKeysRouteImport.update({
   path: '/keys',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppVolumesIndexRoute = AppVolumesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/billing': typeof AppBillingRoute
   '/keys': typeof AppKeysRoute
   '/volumes': typeof AppVolumesRouteWithChildren
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/billing': typeof AppBillingRoute
   '/keys': typeof AppKeysRoute
   '/': typeof AppIndexRoute
   '/volumes/$volumeId': typeof AppVolumesVolumeIdRoute
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/sign-up': typeof SignUpRoute
   '/terms': typeof TermsRoute
+  '/_app/billing': typeof AppBillingRoute
   '/_app/keys': typeof AppKeysRoute
   '/_app/volumes': typeof AppVolumesRouteWithChildren
   '/_app/': typeof AppIndexRoute
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/billing'
     | '/keys'
     | '/volumes'
     | '/volumes/$volumeId'
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/billing'
     | '/keys'
     | '/'
     | '/volumes/$volumeId'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/sign-up'
     | '/terms'
+    | '/_app/billing'
     | '/_app/keys'
     | '/_app/volumes'
     | '/_app/'
@@ -232,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppKeysRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/volumes/': {
       id: '/_app/volumes/'
       path: '/'
@@ -278,12 +297,14 @@ const AppVolumesRouteWithChildren = AppVolumesRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppBillingRoute: typeof AppBillingRoute
   AppKeysRoute: typeof AppKeysRoute
   AppVolumesRoute: typeof AppVolumesRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBillingRoute: AppBillingRoute,
   AppKeysRoute: AppKeysRoute,
   AppVolumesRoute: AppVolumesRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
