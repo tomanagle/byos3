@@ -3,12 +3,15 @@ import {
   Connector,
   type MembershipResolver,
   type ResourceAccessRepository,
+  type SubscriptionResolver,
   Volume,
 } from "@byos3/core";
-import type { ConnectorRecord, VolumeRecord } from "@byos3/protocol";
+import { type ConnectorRecord, type VolumeRecord, isUnlimited } from "@byos3/protocol";
 import { createDriver } from "@byos3/s3";
 import { expect, test } from "bun:test";
+import { connectBucket } from "./connectors";
 import type { Principal, ServiceContext } from "./context";
+import { resolveEntitlement } from "./entitlement";
 import { uploadIntent } from "./volumes";
 
 const vault = {
@@ -40,13 +43,19 @@ const connRecord: ConnectorRecord = {
 };
 
 // `role` here is the caller's RESOURCE role on the volume (full | read_write | read_only | null).
-function ctxFor(principal: Principal, role: string | null): ServiceContext {
+// `opts` lets entitlement tests vary the existing volume count + active subscription.
+function ctxFor(
+  principal: Principal,
+  role: string | null,
+  opts: { volumesInNamespace?: VolumeRecord[]; activeSub?: { seats: number } | null } = {},
+): ServiceContext {
   const connector = new Connector(connRecord, { vault, driverFactory: createDriver });
   const volume = new Volume(volRecord, { connector });
   const memberships: MembershipResolver = {
     roleFor: async () => null,
     primaryNamespaceId: async () => "ns_1",
     namespaceOwner: async () => "u1",
+    memberCount: async () => 1,
   };
   const access: ResourceAccessRepository = {
     volumeRoleFor: async () => role as never,
@@ -58,17 +67,21 @@ function ctxFor(principal: Principal, role: string | null): ServiceContext {
     addConnectorMember: async () => {},
     userByEmail: async () => null,
   };
+  const subscriptions: SubscriptionResolver = {
+    activeSubscription: async () => opts.activeSub ?? null,
+  };
   return {
     principal,
     connectors: { get: async () => connector, insert: async () => {} },
     volumes: {
       get: async () => volume,
       insert: async () => {},
-      listByNamespace: async () => [],
+      listByNamespace: async () => opts.volumesInNamespace ?? [],
       namespaceOf: async () => volRecord.namespaceId,
     },
     memberships,
     access,
+    subscriptions,
     vault,
     driverFactory: createDriver,
   };
@@ -156,4 +169,38 @@ test("a key volume-scoped to OTHER volumes is denied even in the right namespace
   await expect(
     uploadIntent(ctxFor(principal, null), { volumeId: "vol_1", hash: "a".repeat(64) }),
   ).rejects.toBeInstanceOf(AppError);
+});
+
+const connectInput = {
+  provider: "r2" as const,
+  endpoint: "https://acct.r2.cloudflarestorage.com",
+  region: "auto",
+  bucket: "b",
+  prefix: "p/",
+  accessKeyId: "AKIA",
+  secret: "shh",
+  label: "vol",
+};
+
+test("free tier (no sub) is capped at 1 volume - the 2nd connect is denied", async () => {
+  // One volume already exists in the namespace; free limit is 1 -> limit_exceeded before any probe.
+  const ctx = ctxFor({ userId: "u1" }, "full", {
+    volumesInNamespace: [volRecord],
+    activeSub: null,
+  });
+  await expect(connectBucket(ctx, connectInput)).rejects.toMatchObject({ code: "limit_exceeded" });
+});
+
+test("entitlement: an active sub yields paid limits + seats; none yields free", async () => {
+  const paid = await resolveEntitlement(
+    ctxFor({ userId: "u1" }, "full", { activeSub: { seats: 3 } }),
+    "ns_1",
+  );
+  expect(paid.paid).toBe(true);
+  expect(paid.seats).toBe(3);
+  expect(isUnlimited(paid.limits.volumes)).toBe(true);
+
+  const free = await resolveEntitlement(ctxFor({ userId: "u1" }, "full"), "ns_1");
+  expect(free.paid).toBe(false);
+  expect(free.limits.volumes).toBe(1);
 });

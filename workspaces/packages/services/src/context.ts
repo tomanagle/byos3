@@ -3,6 +3,7 @@ import type {
   DriverFactory,
   MembershipResolver,
   ResourceAccessRepository,
+  SubscriptionResolver,
   Vault,
   VolumeRepository,
 } from "@byos3/core";
@@ -45,6 +46,8 @@ export interface ServiceContext {
   memberships: MembershipResolver;
   /** Resource-level access (per-connector/volume roles + sharing). See rbac.md. */
   access: ResourceAccessRepository;
+  /** The namespace's paid subscription, for entitlement gates (billing.md). */
+  subscriptions: SubscriptionResolver;
   vault: Vault;
   driverFactory: DriverFactory;
 }

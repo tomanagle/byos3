@@ -6,6 +6,7 @@ import {
   D1ConnectorRepository,
   D1MembershipRepository,
   D1ResourceAccessRepository,
+  D1SubscriptionRepository,
   D1VolumeRepository,
 } from "@byos3/db";
 import { createDriver } from "@byos3/s3";
@@ -81,6 +82,7 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
       volumes: new D1VolumeRepository(db, connectors),
       memberships,
       access: new D1ResourceAccessRepository(db),
+      subscriptions: new D1SubscriptionRepository(db),
       vault,
       driverFactory: createDriver,
     };

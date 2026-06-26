@@ -6,6 +6,7 @@ import {
   D1ConnectorRepository,
   D1MembershipRepository,
   D1ResourceAccessRepository,
+  D1SubscriptionRepository,
   D1VolumeRepository,
 } from "@byos3/db";
 import { createDriver } from "@byos3/s3";
@@ -36,6 +37,7 @@ export async function createServiceContext(headers: Headers): Promise<ServiceCon
     volumes: new D1VolumeRepository(db, connectors),
     memberships: new D1MembershipRepository(db),
     access: new D1ResourceAccessRepository(db),
+    subscriptions: new D1SubscriptionRepository(db),
     vault,
     driverFactory: createDriver,
   };

@@ -1,15 +1,17 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import {
   AppError,
   Connector,
   Volume,
   createId,
+  type ActiveSubscription,
   type ConnectorRepository,
   type DriverFactory,
   type MembershipResolver,
   type ResourceAccessRepository,
   type ResourceMember,
+  type SubscriptionResolver,
   type Vault,
   type VolumeRepository,
 } from "@byos3/core";
@@ -21,7 +23,11 @@ import {
   volume as volumeTbl,
   volumeMember as volumeMemberTbl,
 } from "./schema";
-import { member as memberTbl, user as userTbl } from "./auth-schema";
+import {
+  member as memberTbl,
+  subscription as subscriptionTbl,
+  user as userTbl,
+} from "./auth-schema";
 
 type DB = DrizzleD1Database<Record<string, never>>;
 
@@ -112,6 +118,29 @@ export class D1MembershipRepository implements MembershipResolver {
       .where(and(eq(memberTbl.organizationId, namespaceId), eq(memberTbl.role, "owner")))
       .limit(1);
     return rows.length ? rows[0].userId : null;
+  }
+
+  async memberCount(namespaceId: string): Promise<number> {
+    const rows = await this.db
+      .select({ n: sql<number>`count(*)` })
+      .from(memberTbl)
+      .where(eq(memberTbl.organizationId, namespaceId));
+    return rows.length ? Number(rows[0].n) : 0;
+  }
+}
+
+/** Reads the Better Auth `subscription` table to decide a namespace's entitlement (billing.md). */
+export class D1SubscriptionRepository implements SubscriptionResolver {
+  constructor(private readonly db: DB) {}
+
+  async activeSubscription(namespaceId: string): Promise<ActiveSubscription | null> {
+    // `referenceId` is the org/namespace id; an active OR trialing sub unlocks the paid limits.
+    const rows = await this.db
+      .select({ status: subscriptionTbl.status, seats: subscriptionTbl.seats })
+      .from(subscriptionTbl)
+      .where(eq(subscriptionTbl.referenceId, namespaceId));
+    const live = rows.find((r) => r.status === "active" || r.status === "trialing");
+    return live ? { seats: live.seats ?? 1 } : null;
   }
 }
 

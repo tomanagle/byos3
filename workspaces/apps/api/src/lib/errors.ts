@@ -9,6 +9,7 @@ export const API_ERROR_CODES = [
   "not_found",
   "conflict",
   "scope_violation",
+  "limit_exceeded",
   "provider_error",
   "internal_error",
 ] as const;
@@ -80,6 +81,14 @@ export function fromAppError(err: AppError): ApiError {
         code: "scope_violation",
         message: err.message,
         status: 400,
+      });
+    case "limit_exceeded":
+      // 402: the request is valid but the namespace's plan must be upgraded to proceed.
+      return new ApiError({
+        type: "invalid_request_error",
+        code: "limit_exceeded",
+        message: err.message,
+        status: 402,
       });
     case "conflict":
       return new ApiError({

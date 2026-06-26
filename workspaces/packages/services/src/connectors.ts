@@ -1,6 +1,7 @@
 import { AppError, Connector, createId } from "@byos3/core";
 import { ConnectorRecord, VolumeRecord, type ConnectBucketInput } from "@byos3/protocol";
 import type { ServiceContext } from "./context";
+import { assertWithinLimit, resolveEntitlement } from "./entitlement";
 
 export interface ConnectResult {
   connectorId: string;
@@ -25,6 +26,11 @@ export async function connectBucket(
     ctx.principal.keyNamespaceId ??
     (await ctx.memberships.primaryNamespaceId(ctx.principal.userId));
   if (!namespaceId) throw new AppError("forbidden", "no namespace");
+
+  // Entitlement gate: a namespace may mount up to its plan's volume cap (free = 1, paid = unlimited).
+  const ent = await resolveEntitlement(ctx, namespaceId);
+  const existing = await ctx.volumes.listByNamespace(namespaceId);
+  assertWithinLimit(existing.length, ent.limits.volumes, "volume");
 
   const secretCipher = await ctx.vault.seal(input.secret);
   const now = Date.now();

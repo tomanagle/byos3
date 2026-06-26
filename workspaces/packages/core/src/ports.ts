@@ -32,6 +32,20 @@ export interface MembershipResolver {
   primaryNamespaceId(userId: string): Promise<string | null>;
   /** The owner member's userId for a namespace - resource attribution for org-key callers (api.md). */
   namespaceOwner(namespaceId: string): Promise<string | null>;
+  /** Count of org members (= billed seats baseline) for a namespace. */
+  memberCount(namespaceId: string): Promise<number>;
+}
+
+/** A namespace's active paid subscription, if any (backed by the Better Auth `subscription` table). */
+export interface ActiveSubscription {
+  /** Purchased seats (defaults to 1 when the column is null). */
+  seats: number;
+}
+
+/** Resolves the paid subscription that gates a namespace's entitlement (billing.md). */
+export interface SubscriptionResolver {
+  /** The active or trialing subscription for a namespace (org id), or null when on the free tier. */
+  activeSubscription(namespaceId: string): Promise<ActiveSubscription | null>;
 }
 
 export interface ResourceMember {
