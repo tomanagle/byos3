@@ -1,4 +1,4 @@
-# Minimal S3-compatible fake bucket for e2e tests — a MinIO server + a one-shot bucket creator.
+# Minimal S3-compatible fake bucket for e2e tests - a MinIO server + a one-shot bucket creator.
 # Driven by `bun run e2e:s3` (scripts/e2e-s3.ts), which brings this up, runs the presigned
 # round-trip test through the `custom` provider, then tears it down. You can also leave it running
 # and connect to it from the web app's Connect dialog as a "Custom S3" volume:
@@ -13,7 +13,7 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-byos3}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-byos3secret}
     ports:
-      # Non-standard host ports (9000/9001 are often taken — e.g. OrbStack), matching the project's
+      # Non-standard host ports (9000/9001 are often taken - e.g. OrbStack), matching the project's
       # 4500/8788 convention. Override with MINIO_PORT / MINIO_CONSOLE_PORT.
       - "${MINIO_PORT:-9400}:9000"
       - "${MINIO_CONSOLE_PORT:-9401}:9001"

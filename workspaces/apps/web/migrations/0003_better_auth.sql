@@ -1,4 +1,4 @@
--- Phase 1 — Better Auth schema (core + organization plugin). Matches src/db/auth-schema.ts.
+-- Phase 1 - Better Auth schema (core + organization plugin). Matches src/db/auth-schema.ts.
 CREATE TABLE IF NOT EXISTS user (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

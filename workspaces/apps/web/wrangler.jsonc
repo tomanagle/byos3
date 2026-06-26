@@ -15,8 +15,9 @@
   // There is intentionally no app.byos3.com. See agents/docs/deployment.md.
   "routes": [{ "pattern": "byos3.com", "custom_domain": true }],
   "vars": {
-    // Cloudflare Turnstile PUBLIC test site key (always passes). Replace per-env for production.
-    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    // The app's public apex. Drives Better Auth baseURL + trusted origins. The deploy workflow
+    // rewrites this (and the route pattern above) from the APP_DOMAIN GitHub Actions variable.
+    "APP_DOMAIN": "byos3.com",
   },
   "d1_databases": [
     {
@@ -27,5 +28,7 @@
       "migrations_dir": "migrations",
     },
   ],
-  // TURNSTILE_SECRET_KEY is a secret: local via .dev.vars, prod via `wrangler secret put` (SOPS-managed).
+  // Turnstile split: the PUBLIC site key is a build-time Vite var (VITE_TURNSTILE_SITE_KEY, inlined
+  // into the client bundle - see the deploy workflow). The SECRET key is a Worker secret: local via
+  // .dev.vars, prod via `wrangler secret put` (set in CI from the Pulumi widget). Never client-side.
 }

@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "byos3-docs",
+  "compatibility_date": "2025-09-02",
+  // Static-assets-only Worker (no `main`): serves the Scalar docs site that `bun run docs:build`
+  // writes into ./dist-docs. Deploy with `bun run docs:deploy`. The public API reference lives at
+  // docs.byos3.com; `custom_domain: true` makes Wrangler provision the proxied DNS record + edge TLS
+  // for that hostname on deploy, exactly like web (byos3.com) and api (api.byos3.com). CI rewrites
+  // byos3.com -> APP_DOMAIN so a fork's docs land at docs.<their-domain>. The live API Worker also
+  // serves an inline /docs at api.<domain>/docs for direct hits. See agents/docs/api.md, deployment.md.
+  "workers_dev": false,
+  "routes": [{ "pattern": "docs.byos3.com", "custom_domain": true }],
+  "assets": {
+    "directory": "./dist-docs",
+    "not_found_handling": "single-page-application",
+  },
+}

@@ -1,4 +1,4 @@
--- Phase 1 — connectors (encrypted provider credentials) + volumes (mountable drives).
+-- Phase 1 - connectors (encrypted provider credentials) + volumes (mountable drives).
 CREATE TABLE IF NOT EXISTS connector (
   id TEXT PRIMARY KEY,
   owner_user_id TEXT NOT NULL,

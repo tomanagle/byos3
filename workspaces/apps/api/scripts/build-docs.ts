@@ -1,6 +1,7 @@
-// Generates static OpenAPI + Scalar docs from the live route schemas.
+// Generates a static OpenAPI + Scalar docs site from the live route schemas.
 // Run: `bun run docs:build` (from workspaces/apps/api).
-// Output: dist/openapi.json + dist/index.html - publishable to any static host.
+// Output: dist-docs/openapi.json + dist-docs/index.html - served by the byos3-docs static-assets
+// Worker at docs.<APP_DOMAIN> (see wrangler.docs.jsonc). Safe to publish to any static host.
 
 // oxlint-disable no-nodejs-modules -- local build script, not the worker runtime
 import { mkdir, writeFile } from "node:fs/promises";
@@ -8,18 +9,36 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Import ./app (not ./index) and pull the same spec the worker serves at /openapi.json, so the doc
-// config lives in exactly one place.
+// config (title, version, description, security schemes) lives in exactly one place: src/app.ts.
 import { app } from "../src/app";
+// The ROOT package.json version is the single source of truth (bumped by `bun run release`).
+import rootPkg from "../../../../package.json";
 
 const API_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
-const DIST_DIR = resolve(API_ROOT, "dist");
+const DIST_DIR = resolve(API_ROOT, "dist-docs");
 
 const res = await app.request("/openapi.json");
 if (!res.ok) {
   throw new Error(`Failed to fetch OpenAPI spec: ${res.status}`);
 }
-const spec = await res.json();
+const spec = (await res.json()) as { info?: { version?: string } };
 
+// Stamp the release version into the published spec so the docs always show what's live. `release`
+// bumps package.json and tags v<version>, so the docs + the deploy tag stay in lockstep.
+if (rootPkg.version && spec.info) spec.info.version = rootPkg.version;
+
+// The static site is a different origin from the API, so the spec's default `servers: [{ url: "/" }]`
+// would aim Scalar's "Try It" at docs.<domain> (which only serves static files). `baseServerURL`
+// redirects those calls to the real API. APP_DOMAIN is injected by CI for forks; defaults to
+// byos3.com. The local docs container overrides the whole URL via DOCS_BASE_SERVER_URL so "Try It"
+// targets the local API. (The inline /docs route on the live API Worker omits all of this - there,
+// same-origin "/" is correct, so "Try It" hits the worker that served the page.)
+const appDomain = process.env.APP_DOMAIN ?? "byos3.com";
+const baseServerURL = process.env.DOCS_BASE_SERVER_URL ?? `https://api.${appDomain}`;
+const scalarConfig = { baseServerURL };
+
+// Scalar is loaded from jsDelivr; the spec is inlined as a JSON blob, so the published page is
+// self-contained (no backend call needed to render it).
 const html = `<!doctype html>
 <html>
   <head>
@@ -28,7 +47,10 @@ const html = `<!doctype html>
     <title>byos3 API</title>
   </head>
   <body>
-    <script id="api-reference" type="application/json">
+    <script
+      id="api-reference"
+      type="application/json"
+      data-configuration='${JSON.stringify(scalarConfig)}'>
 ${JSON.stringify(spec)}
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>

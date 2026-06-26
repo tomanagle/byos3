@@ -1,5 +1,5 @@
 // Dev migrator: applies D1 migrations to the shared local-D1 volume, then WATCHES the migrations
-// directory and re-applies whenever it changes — so saving a new migration auto-applies it to the
+// directory and re-applies whenever it changes - so saving a new migration auto-applies it to the
 // local DB without restarting the stack. `wrangler ... migrations apply` is idempotent (it tracks
 // what's already applied), so re-runs only apply the new files.
 //

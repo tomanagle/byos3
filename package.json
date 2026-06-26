@@ -1,5 +1,6 @@
 {
   "name": "byos3",
+  "version": "0.1.0",
   "private": true,
   "workspaces": [
     "workspaces/apps/*",
@@ -17,12 +18,14 @@
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check .",
     "secrets:setup": "bun scripts/setup-secrets.ts",
-    "secrets:deploy": "bun scripts/deploy-secrets.ts",
+    "release": "bun dev/release.ts",
     "skills:list": "intent list",
     "skills:validate": "intent validate",
     "skills:stale": "intent stale",
     "skills:scaffold": "intent scaffold",
-    "docker:up": "docker compose -f dev/docker-compose.yml up --build",
+    "docker:up": "docker compose -f dev/docker-compose.yml up --build -d",
+    "docker:rebuild": "docker compose -f dev/docker-compose.yml up --build --renew-anon-volumes -d",
+    "docker:logs": "docker compose -f dev/docker-compose.yml logs -f",
     "docker:down": "docker compose -f dev/docker-compose.yml down",
     "docker:nuke": "docker compose -f dev/docker-compose.yml down -v --rmi local --remove-orphans",
     "e2e": "bun run --filter='@byos3/e2e' test",

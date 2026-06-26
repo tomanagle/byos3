@@ -1,7 +1,7 @@
 # Dev image for the byos3 Workers. The dev servers run under NODE, not Bun: Wrangler doesn't support
 # the Bun runtime, and vite-under-Bun hits a `node:module` incompatibility. So we install the
 # workspace with Bun (deterministic via bun.lock) in one stage, then run vite/wrangler under Node.
-# This is a dev convenience only — production deploys to Cloudflare via Wrangler (deployment.md).
+# This is a dev convenience only - production deploys to Cloudflare via Wrangler (deployment.md).
 
 # ── Stage 1: install deps with Bun (resolves the monorepo + fetches linux-native binaries) ──
 FROM oven/bun:1 AS deps
@@ -13,4 +13,8 @@ RUN bun install --frozen-lockfile
 FROM node:24-bookworm-slim
 WORKDIR /app
 COPY --from=deps /app /app
-EXPOSE 4500 8787
+# Also carry the Bun binary: the docs build (`bun run docs:build`) resolves the API's `@/` tsconfig
+# path aliases when it imports the Hono app, which plain Node can't. Dev servers still run under Node
+# (Wrangler/vite don't support the Bun runtime) - Bun is used only for that one TS build step.
+COPY --from=deps /usr/local/bin/bun /usr/local/bin/bun
+EXPOSE 4500 8787 8789

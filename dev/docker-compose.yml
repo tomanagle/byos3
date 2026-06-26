@@ -1,16 +1,19 @@
-# Local containerized dev for byos3 — `bun run docker:up`.
+# Local containerized dev for byos3 - `bun run docker:up`.
 #
-#   web → http://localhost:${WEB_PORT:-4500}   (TanStack Start / vite dev, under Node)
-#   api → http://localhost:${API_PORT:-8788}   (Hono / wrangler dev — workerd, under Node)
+#   web  → http://localhost:${WEB_PORT:-4500}    (TanStack Start / vite dev, under Node)
+#   api  → http://localhost:${API_PORT:-8788}    (Hono / wrangler dev - workerd, under Node)
+#   docs → http://localhost:${DOCS_PORT:-8789}   (static OpenAPI + Scalar site - mirrors docs.<domain>)
 #
 # Both Workers share ONE local-D1 volume (a key minted on web verifies on api), exactly like prod
 # where they bind the same D1. The `migrator` service applies migrations to that volume and then
-# WATCHES the migrations dir (bind-mounted from the host) — save a new migration and it auto-applies.
-# web/api wait for the migrator to be healthy (initial migrations done) before starting.
+# WATCHES the migrations dir (bind-mounted from the host) - save a new migration and it auto-applies.
+# web/api wait for the migrator to be healthy (initial migrations done) before starting. The `docs`
+# service builds the API reference from the route schemas and rebuilds when they change; it touches
+# no DB, so it starts independently.
 #
 # Servers run under Node, not Bun (Wrangler doesn't support the Bun runtime). Tear down with
-# `bun run docker:nuke`. Host ports default to 4500/8788 (3000 is taken on some machines); override
-# with `WEB_PORT=4000 API_PORT=9000 bun run docker:up`.
+# `bun run docker:nuke`. Host ports default to 4500/8788/8789 (3000 is taken on some machines);
+# override with `WEB_PORT=4000 API_PORT=9000 DOCS_PORT=9001 bun run docker:up`.
 name: byos3-dev
 
 services:
@@ -38,10 +41,19 @@ services:
       dockerfile: dev/Dockerfile
     working_dir: /app/workspaces/apps/web
     command: npx vite dev --host 0.0.0.0 --port 4500
+    environment:
+      # Poll the filesystem so vite/chokidar reliably sees edits across the Docker bind mount (macOS
+      # doesn't propagate inotify events into the VM). Required for HMR.
+      CHOKIDAR_USEPOLLING: "true"
     ports:
       - "${WEB_PORT:-4500}:4500"
-    # The vite/cloudflare plugin persists local D1 under .wrangler/state — back it with the shared volume.
     volumes:
+      # Live host source so vite HMR sees your edits. node_modules is an ANONYMOUS volume so the
+      # container keeps its own linux deps (the host's macOS node_modules would break workerd/esbuild),
+      # and `bun run docker:rebuild` (up --build -V) refreshes it after a dependency change. The local
+      # D1 lives in the shared d1 volume (nested under the source bind).
+      - ..:/app
+      - /app/node_modules
       - d1:/app/workspaces/apps/web/.wrangler/state
     depends_on:
       migrator:
@@ -57,10 +69,55 @@ services:
     ports:
       - "${API_PORT:-8788}:8787"
     volumes:
+      # Same pattern as web: live source so wrangler reloads on edits; node_modules is an anonymous
+      # volume holding the image's linux install (refreshed by `bun run docker:rebuild`).
+      - ..:/app
+      - /app/node_modules
       - d1:/state
     depends_on:
       migrator:
         condition: service_healthy
+
+  docs:
+    image: byos3-dev:local
+    build:
+      context: ..
+      dockerfile: dev/Dockerfile
+    # Build the API reference from the route schemas, wait for that first build, then serve dist-docs
+    # with `wrangler dev` - the same static-assets Worker config (wrangler.docs.jsonc) that runs in
+    # prod at docs.<domain>. docs-watch keeps rebuilding when the schemas change. No DB needed.
+    command:
+      - sh
+      - -c
+      - |
+        node /app/dev/docs-watch.mjs &
+        until [ -f /tmp/docs-ready ]; do sleep 0.5; done
+        cd /app/workspaces/apps/api
+        exec npx wrangler dev --config wrangler.docs.jsonc --ip 0.0.0.0 --port 8789
+    environment:
+      # Scalar's "Try It" runs in YOUR browser, so point it at the API's published host port (not the
+      # container hostname). Cross-origin, exactly like prod (docs.<domain> → api.<domain>).
+      DOCS_BASE_SERVER_URL: "http://localhost:${API_PORT:-8788}"
+    ports:
+      - "${DOCS_PORT:-8789}:8789"
+    volumes:
+      # Live source so docs-watch sees schema edits; node_modules is the image's linux install.
+      - ..:/app
+      - /app/node_modules
+
+  # Local Stripe: ensures the sandbox product/prices exist, writes price IDs + the webhook signing
+  # secret into web .dev.vars, and forwards webhook events to web. No-ops (exits 0) when
+  # STRIPE_SECRET_KEY isn't set, so core local dev needs no Stripe. See dev/stripe-setup.sh,
+  # agents/docs/billing.md.
+  stripe:
+    image: stripe/stripe-cli:latest
+    entrypoint: /bin/sh
+    command: /app/dev/stripe-setup.sh
+    volumes:
+      - ..:/app
+    depends_on:
+      - web
+    restart: on-failure
 
 volumes:
   d1:

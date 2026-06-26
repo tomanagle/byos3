@@ -1,21 +1,43 @@
 name: Deploy
 
+# Deployments are driven by VERSION TAGS, not branch pushes. Cut a release with:
+#   git tag v1.2.3 && git push origin v1.2.3
+# Each tag runs the full pipeline; Pulumi (state in R2) + the D1 migration ledger make every run
+# incremental from the currently-deployed state, so re-tagging is safe and only applies the delta.
+# `workflow_dispatch` lets you re-run a deploy from any selected tag/branch in the Actions UI.
 on:
   push:
-    branches: [main]
+    tags: ["v*"]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
+  # Serialize deploys so two tags can't race on the shared Pulumi state / D1 / Workers.
   group: deploy-production
   cancel-in-progress: false
 
-# Required repo config:
-#   secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, PULUMI_ACCESS_TOKEN
-#   vars:    PULUMI_STACK  (e.g. "myorg/byos3/production")
-# See agents/docs/deployment.md.
+# To deploy your OWN copy, set these in GitHub → Settings → Secrets and variables → Actions.
+# No code changes needed - the workflow injects your domain + secrets at deploy time.
+#
+#   Secrets:
+#     CLOUDFLARE_API_TOKEN        token with Workers + D1 + Turnstile + DNS + R2 edit permissions
+#     CLOUDFLARE_ACCOUNT_ID       your Cloudflare account id
+#     R2_ACCESS_KEY_ID            R2 S3 API access key id  (Cloudflare → R2 → Manage API Tokens)
+#     R2_SECRET_ACCESS_KEY        the paired R2 S3 API secret
+#     PULUMI_CONFIG_PASSPHRASE    passphrase that encrypts secrets inside the Pulumi state (any strong string)
+#     BETTER_AUTH_SECRET          random 32+ char string  (openssl rand -base64 32)
+#     CREDENTIAL_ENCRYPTION_KEY   32-byte base64 key       (openssl rand -base64 32)
+#   Variables:
+#     APP_DOMAIN                  your apex domain, e.g. example.com  (the zone must exist in your CF account)
+#     PULUMI_STACK                stack name (optional, default `production`)
+#     PULUMI_STATE_BUCKET         R2 bucket for Pulumi state (optional, default `byos3-pulumi-state`)
+#
+# Pulumi state lives in an R2 bucket - no Pulumi Cloud account needed. The workflow auto-creates the
+# bucket if missing and stores state there (DIY backends lock + encrypt state; secrets are sealed with
+# PULUMI_CONFIG_PASSPHRASE). Result: the app deploys to APP_DOMAIN, the API to api.APP_DOMAIN, and the
+# docs to docs.APP_DOMAIN. See agents/docs/deployment.md.
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -23,7 +45,22 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+      PULUMI_STACK: ${{ vars.PULUMI_STACK || 'production' }}
+      # Pulumi DIY backend on R2 (S3-compatible). PULUMI_BACKEND_URL points the CLI + action at the
+      # bucket; the AWS_* vars are the R2 S3 API credentials; the passphrase seals state secrets.
+      PULUMI_STATE_BUCKET: ${{ vars.PULUMI_STATE_BUCKET || 'byos3-pulumi-state' }}
+      PULUMI_BACKEND_URL: "s3://${{ vars.PULUMI_STATE_BUCKET || 'byos3-pulumi-state' }}?endpoint=${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com&region=auto&s3ForcePathStyle=true"
+      PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_REGION: auto
+      # APP_DOMAIN flows into Pulumi (Turnstile domains) AND the wrangler rewrites below.
+      APP_DOMAIN: ${{ vars.APP_DOMAIN || 'byos3.com' }}
+      # The git tag being deployed (e.g. v1.2.3) - equals the root package.json version that `release`
+      # bumped. Used for the run summary; the docs spec reads the version from package.json directly.
+      APP_VERSION: ${{ github.ref_name }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+      CREDENTIAL_ENCRYPTION_KEY: ${{ secrets.CREDENTIAL_ENCRYPTION_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -31,14 +68,20 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
 
-      # 1) Provision Cloudflare infra (D1 + Turnstile) with Pulumi.
+      # 1) Provision Cloudflare infra (D1 + Turnstile) with Pulumi. State lives in R2 (PULUMI_BACKEND_URL).
       - name: Install infra deps
         run: cd infra && bun install
+      # Create the R2 state bucket on first run (idempotent). Pulumi can't provision its own state
+      # store, so we bootstrap it with Wrangler using the same Cloudflare token.
+      - name: Ensure Pulumi state bucket (R2)
+        working-directory: workspaces/apps/api
+        run: bunx wrangler r2 bucket create "$PULUMI_STATE_BUCKET" || echo "(state bucket already exists)"
       - name: Pulumi up
         uses: pulumi/actions@v6
         with:
           command: up
-          stack-name: ${{ vars.PULUMI_STACK }}
+          cloud-url: ${{ env.PULUMI_BACKEND_URL }}
+          stack-name: ${{ vars.PULUMI_STACK || 'production' }}
           work-dir: infra
           upsert: true
 
@@ -50,34 +93,77 @@ jobs:
           echo "d1_id=$(pulumi stack output d1DatabaseId --stack "$PULUMI_STACK")" >> "$GITHUB_OUTPUT"
           echo "site_key=$(pulumi stack output turnstileSiteKey --stack "$PULUMI_STACK")" >> "$GITHUB_OUTPUT"
           pulumi stack output turnstileSecretKey --show-secrets --stack "$PULUMI_STACK" > "$RUNNER_TEMP/ts_secret"
-        env:
-          PULUMI_STACK: ${{ vars.PULUMI_STACK }}
 
-      # 3) Inject the real D1 id + Turnstile site key into the Worker config.
-      - name: Configure wrangler
+      # 3) Inject the real D1 id and APP_DOMAIN into the Worker configs. The committed configs ship
+      #    byos3.com / a placeholder D1 id; CI rewrites them so a fork "just works" from its GitHub
+      #    variables. The domain rewrite also updates the custom_domain route patterns - this is what
+      #    wires up DNS for each hostname: web → APP_DOMAIN, api → api.APP_DOMAIN, docs → docs.APP_DOMAIN.
+      #    Wrangler provisions the proxied DNS record + edge TLS for each custom_domain on deploy (the
+      #    zone must already exist). The Turnstile SITE key is NOT a Worker var - it's a build-time
+      #    Vite var inlined into the client bundle (see "Build web" below); the SECRET is set later.
+      - name: Configure web wrangler
         working-directory: workspaces/apps/web
         run: |
           sed -i "s/local-dev-placeholder/${{ steps.infra.outputs.d1_id }}/" wrangler.jsonc
-          sed -i "s/1x00000000000000000000AA/${{ steps.infra.outputs.site_key }}/" wrangler.jsonc
+          sed -i "s|byos3\.com|${APP_DOMAIN}|g" wrangler.jsonc
+      - name: Configure API wrangler
+        working-directory: workspaces/apps/api
+        run: |
+          sed -i "s/local-dev-placeholder/${{ steps.infra.outputs.d1_id }}/" wrangler.jsonc
+          sed -i "s|byos3\.com|${APP_DOMAIN}|g" wrangler.jsonc
+          sed -i "s|byos3\.com|${APP_DOMAIN}|g" wrangler.docs.jsonc
 
-      # 4) Build the Worker, migrate the remote D1, set the Turnstile secret, deploy.
-      - name: Build
+      # 4) Build, migrate the shared D1, deploy both Workers, then set their secrets.
+      - name: Build web
+        # The PUBLIC Turnstile site key from the Pulumi widget is inlined into the client bundle here
+        # by Vite (import.meta.env.VITE_TURNSTILE_SITE_KEY) - the only build-time-baked secret-ish value.
+        env:
+          VITE_TURNSTILE_SITE_KEY: ${{ steps.infra.outputs.site_key }}
         run: bun run build
       - name: Migrate D1 (remote)
         working-directory: workspaces/apps/web
         run: bunx wrangler d1 migrations apply DB --remote
-      - name: Set worker secrets
+      - name: Deploy web Worker
         working-directory: workspaces/apps/web
-        run: bunx wrangler secret put TURNSTILE_SECRET_KEY < "$RUNNER_TEMP/ts_secret"
-      - name: Deploy web (byos3.com)
-        working-directory: workspaces/apps/web
+        run: bunx wrangler deploy
+      - name: Deploy API Worker
+        working-directory: workspaces/apps/api
         run: bunx wrangler deploy
 
-      # 5) Deploy the API Worker to api.byos3.com against the SAME D1 (migrations already applied
-      #    above; the api binds the same database). Its custom_domain route provisions the hostname.
-      - name: Configure API wrangler
+      # 4b) Build the static OpenAPI docs from the API's own schema and deploy them as a static-assets
+      #     Worker at docs.APP_DOMAIN. docs:build reads APP_DOMAIN from env so Scalar's "Try It" points
+      #     at api.APP_DOMAIN. No secrets - it serves static files only.
+      - name: Build + deploy docs Worker
         working-directory: workspaces/apps/api
-        run: sed -i "s/local-dev-placeholder/${{ steps.infra.outputs.d1_id }}/" wrangler.jsonc
-      - name: Deploy API (api.byos3.com)
+        run: |
+          bun run docs:build
+          bunx wrangler deploy --config wrangler.docs.jsonc
+
+      # 5) Set secrets on the now-deployed Workers. Turnstile's secret comes from Pulumi; the auth +
+      #    credential-encryption keys come from your GitHub secrets. Applied to BOTH Workers (they
+      #    share the same D1 + Better Auth config).
+      - name: Set web secrets
+        working-directory: workspaces/apps/web
+        run: |
+          bunx wrangler secret put TURNSTILE_SECRET_KEY < "$RUNNER_TEMP/ts_secret"
+          printf '%s' "$BETTER_AUTH_SECRET" | bunx wrangler secret put BETTER_AUTH_SECRET
+          printf '%s' "$CREDENTIAL_ENCRYPTION_KEY" | bunx wrangler secret put CREDENTIAL_ENCRYPTION_KEY
+      - name: Set API secrets
         working-directory: workspaces/apps/api
-        run: bunx wrangler deploy
+        run: |
+          printf '%s' "$BETTER_AUTH_SECRET" | bunx wrangler secret put BETTER_AUTH_SECRET
+          printf '%s' "$CREDENTIAL_ENCRYPTION_KEY" | bunx wrangler secret put CREDENTIAL_ENCRYPTION_KEY
+
+      # 6) Record what was deployed where (visible on the Actions run + the production Environment).
+      - name: Deployment summary
+        if: always()
+        run: |
+          {
+            echo "### Deployed \`$APP_VERSION\`"
+            echo ""
+            echo "| Surface | URL |"
+            echo "| --- | --- |"
+            echo "| Web | https://$APP_DOMAIN |"
+            echo "| API | https://api.$APP_DOMAIN |"
+            echo "| Docs | https://docs.$APP_DOMAIN |"
+          } >> "$GITHUB_STEP_SUMMARY"
