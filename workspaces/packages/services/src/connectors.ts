@@ -22,9 +22,9 @@ export async function connectBucket(
   ctx: ServiceContext,
   input: ConnectBucketInput,
 ): Promise<ConnectResult> {
-  const namespaceId =
-    ctx.principal.keyNamespaceId ??
-    (await ctx.memberships.primaryNamespaceId(ctx.principal.userId));
+  // API-key callers act on the key's namespace; session callers on their active namespace (both are
+  // resolved by the transport's composition root - api.md, ctx.ts).
+  const namespaceId = ctx.principal.keyNamespaceId ?? ctx.principal.activeNamespaceId;
   if (!namespaceId) throw new AppError("forbidden", "no namespace");
 
   // Entitlement gate: a namespace may mount up to its plan's volume cap (free = 1, paid = unlimited).

@@ -16,8 +16,8 @@ export const Route = createFileRoute("/api/ns/socket")({
         const ctx = await createServiceContext(request.headers);
         if (!ctx) return new Response("unauthorized", { status: 401 });
 
-        // Connect to the caller's own namespace (where their volumes' journals live).
-        const nsId = await ctx.memberships.primaryNamespaceId(ctx.principal.userId);
+        // Connect to the caller's active namespace (resolved by createServiceContext).
+        const nsId = ctx.principal.activeNamespaceId;
         if (!nsId) return new Response("no namespace", { status: 403 });
 
         const ns = (env as { NAMESPACE: DurableObjectNamespace }).NAMESPACE;

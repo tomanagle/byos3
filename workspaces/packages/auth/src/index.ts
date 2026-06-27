@@ -7,7 +7,6 @@ import { organization } from "better-auth/plugins/organization";
 import { and, eq } from "drizzle-orm";
 import type { DrizzleD1Database } from "drizzle-orm/d1";
 import Stripe from "stripe";
-import { createId } from "@byos3/core";
 import { ac, NAMESPACE_ROLES, PLATFORM_ROLES, platformAc } from "@byos3/core/authz";
 import * as schema from "@byos3/db/auth-schema";
 import { PAID_LIMITS, PLAN_NAME } from "@byos3/protocol";
@@ -16,10 +15,6 @@ import { PAID_LIMITS, PLAN_NAME } from "@byos3/protocol";
 // API-key verification) so the auth model - tables, plugins, roles - is defined exactly once.
 // Pure: it reads no globals; the caller passes the D1-backed drizzle instance + secrets. See
 // agents/docs/auth.md, rbac.md, api.md.
-
-type Adapter = {
-  create: (args: { model: string; data: Record<string, unknown> }) => Promise<unknown>;
-};
 
 export interface CreateAuthOptions {
   db: DrizzleD1Database<Record<string, never>>;
@@ -163,43 +158,10 @@ export function createAuth(opts: CreateAuthOptions) {
       // Billing (Stripe). Mounts /api/auth/stripe/* incl. the webhook. Omitted without a key.
       ...(stripe ? [stripe] : []),
     ],
-    databaseHooks: {
-      user: {
-        create: {
-          // On signup, create the user's personal namespace (= a personal organization) + owner member.
-          after: async (createdUser, ctx) => {
-            try {
-              const adapter = (ctx as { context?: { adapter?: Adapter } })?.context?.adapter;
-              if (!adapter) return;
-              const now = new Date();
-              const orgId = createId("ns");
-              await adapter.create({
-                model: "organization",
-                data: {
-                  id: orgId,
-                  name: "Personal",
-                  slug: `personal-${createdUser.id}`,
-                  createdAt: now,
-                  type: "personal",
-                },
-              });
-              await adapter.create({
-                model: "member",
-                data: {
-                  id: createId("mem"),
-                  organizationId: orgId,
-                  userId: createdUser.id,
-                  role: "owner",
-                  createdAt: now,
-                },
-              });
-            } catch (err) {
-              console.error("personal-org hook failed", err);
-            }
-          },
-        },
-      },
-    },
+    // NB: we deliberately do NOT auto-create a personal org on signup. A user gets a namespace
+    // lazily (the web composition root creates a "Personal" org the first time a user who belongs to
+    // none enters the workspace), so someone who signs up to ACCEPT AN INVITE just joins that org
+    // without a redundant personal one. See apps/web/src/server/ctx.ts, agents/docs/rbac.md.
   });
 }
 

@@ -26,10 +26,20 @@ export interface VolumeRepository {
   namespaceOf(volumeId: string): Promise<string | null>;
 }
 
+/** One namespace (org) a user belongs to. */
+export interface NamespaceMembership {
+  /** Organization/namespace id. */
+  id: string;
+  /** Org slug (a personal namespace is `personal-<userId>`; used to prefer team orgs as default). */
+  slug: string;
+  role: Role;
+}
+
 /** Resolves a user's role in a namespace (backed by the Better Auth `member` table). */
 export interface MembershipResolver {
   roleFor(userId: string, namespaceId: string): Promise<Role | null>;
-  primaryNamespaceId(userId: string): Promise<string | null>;
+  /** Every namespace the user belongs to - drives active-org resolution + the workspace switcher. */
+  listNamespaces(userId: string): Promise<NamespaceMembership[]>;
   /** The owner member's userId for a namespace - resource attribution for org-key callers (api.md). */
   namespaceOwner(namespaceId: string): Promise<string | null>;
   /** Count of org members (= billed seats baseline) for a namespace. */

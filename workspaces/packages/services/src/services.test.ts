@@ -57,7 +57,7 @@ function ctxFor(
   const volume = new Volume(volRecord, { connector });
   const memberships: MembershipResolver = {
     roleFor: async () => null,
-    primaryNamespaceId: async () => "ns_1",
+    listNamespaces: async () => [{ id: "ns_1", slug: "personal-u1", role: "owner" }],
     namespaceOwner: async () => "u1",
     memberCount: async () => 1,
   };
@@ -189,7 +189,7 @@ const connectInput = {
 
 test("free tier (no sub) is capped at 1 volume - the 2nd connect is denied", async () => {
   // One volume already exists in the namespace; free limit is 1 -> limit_exceeded before any probe.
-  const ctx = ctxFor({ userId: "u1" }, "full", {
+  const ctx = ctxFor({ userId: "u1", activeNamespaceId: "ns_1" }, "full", {
     volumesInNamespace: [volRecord],
     activeSub: null,
   });

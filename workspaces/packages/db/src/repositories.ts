@@ -9,6 +9,7 @@ import {
   type ConnectorRepository,
   type DriverFactory,
   type MembershipResolver,
+  type NamespaceMembership,
   type ResourceAccessRepository,
   type ResourceMember,
   type SubscriptionResolver,
@@ -25,6 +26,7 @@ import {
 } from "./schema";
 import {
   member as memberTbl,
+  organization as orgTbl,
   subscription as subscriptionTbl,
   user as userTbl,
 } from "./auth-schema";
@@ -102,13 +104,13 @@ export class D1MembershipRepository implements MembershipResolver {
     return rows.length ? (rows[0].role as Role) : null;
   }
 
-  async primaryNamespaceId(userId: string): Promise<string | null> {
+  async listNamespaces(userId: string): Promise<NamespaceMembership[]> {
     const rows = await this.db
-      .select()
+      .select({ id: orgTbl.id, slug: orgTbl.slug, role: memberTbl.role })
       .from(memberTbl)
-      .where(eq(memberTbl.userId, userId))
-      .limit(1);
-    return rows.length ? rows[0].organizationId : null;
+      .innerJoin(orgTbl, eq(orgTbl.id, memberTbl.organizationId))
+      .where(eq(memberTbl.userId, userId));
+    return rows.map((r) => ({ id: r.id, slug: r.slug, role: r.role as Role }));
   }
 
   async namespaceOwner(namespaceId: string): Promise<string | null> {

@@ -21,6 +21,12 @@ export interface Principal {
   /** Present for API-key requests - the action must also be within these scopes. */
   keyScopes?: Record<string, string[]>;
   /**
+   * The session caller's ACTIVE namespace (org) - the workspace they're currently in. Resolved by the
+   * web composition root from `session.activeOrganizationId` (defaulting to a membership, or a
+   * lazily-created personal org). Absent for API-key callers (they use `keyNamespaceId`). See ctx.ts.
+   */
+  activeNamespaceId?: string;
+  /**
    * Present ONLY for org-owned API-key requests: the namespace the key belongs to. When set,
    * authorization is NAMESPACE-scoped - the key may act on this namespace and every volume in it
    * (intersected with `keyScopes`), independent of any user's role. See @byos3/services authz, api.md.

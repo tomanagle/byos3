@@ -47,7 +47,9 @@ export const authMiddleware = createMiddleware({ type: "function" })
     if (!ctx) {
       throw new Error("unauthorized");
     }
-    const namespaceId = await ctx.memberships.primaryNamespaceId(ctx.principal.userId);
+    // The composition root already resolved the caller's active namespace (creating a personal one
+    // if they belonged to none). See server/ctx.ts.
+    const namespaceId = ctx.principal.activeNamespaceId ?? null;
     context.span.set({ "user.id": ctx.principal.userId, "namespace.id": namespaceId });
     return next({ context: { ctx, namespaceId } });
   });
