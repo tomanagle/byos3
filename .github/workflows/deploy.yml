@@ -38,6 +38,8 @@ concurrency:
 #     APP_DOMAIN                  your apex domain, e.g. example.com  (the zone must exist in your CF account)
 #     PULUMI_STACK                stack name (optional, default `production`)
 #     PULUMI_STATE_BUCKET         R2 bucket for Pulumi state (optional, default `byos3-pulumi-state`)
+#     DEPLOY_WEB / DEPLOY_API / DEPLOY_DOCS  (optional, default true) set to `false` to skip deploying
+#                                 that surface - e.g. DEPLOY_DOCS=false to not publish the API reference
 #
 # Pulumi state lives in an R2 bucket - no Pulumi Cloud account needed. The workflow auto-creates the
 # bucket if missing and stores state there (DIY backends lock + encrypt state; secrets are sealed with
@@ -149,9 +151,11 @@ jobs:
         working-directory: workspaces/apps/web
         run: bunx wrangler d1 migrations apply DB --remote
       - name: Deploy web Worker
+        if: ${{ vars.DEPLOY_WEB != 'false' }}
         working-directory: workspaces/apps/web
         run: bunx wrangler deploy
       - name: Deploy API Worker
+        if: ${{ vars.DEPLOY_API != 'false' }}
         working-directory: workspaces/apps/api
         run: bunx wrangler deploy
 
@@ -159,6 +163,7 @@ jobs:
       #     Worker at docs.APP_DOMAIN. docs:build reads APP_DOMAIN from env so Scalar's "Try It" points
       #     at api.APP_DOMAIN. No secrets - it serves static files only.
       - name: Build + deploy docs Worker
+        if: ${{ vars.DEPLOY_DOCS != 'false' }}
         working-directory: workspaces/apps/api
         run: |
           bun run docs:build
@@ -168,6 +173,7 @@ jobs:
       #    credential-encryption keys come from your GitHub secrets. Applied to BOTH Workers (they
       #    share the same D1 + Better Auth config).
       - name: Set web secrets
+        if: ${{ vars.DEPLOY_WEB != 'false' }}
         working-directory: workspaces/apps/web
         run: |
           bunx wrangler secret put TURNSTILE_SECRET_KEY < "$RUNNER_TEMP/ts_secret"
@@ -187,6 +193,7 @@ jobs:
             printf '%s' "$AUTH_GITHUB_CLIENT_SECRET" | bunx wrangler secret put AUTH_GITHUB_CLIENT_SECRET
           fi
       - name: Set API secrets
+        if: ${{ vars.DEPLOY_API != 'false' }}
         working-directory: workspaces/apps/api
         run: |
           printf '%s' "$BETTER_AUTH_SECRET" | bunx wrangler secret put BETTER_AUTH_SECRET
@@ -196,13 +203,15 @@ jobs:
       - name: Deployment summary
         if: always()
         run: |
+          web='${{ vars.DEPLOY_WEB }}'; api='${{ vars.DEPLOY_API }}'; docs='${{ vars.DEPLOY_DOCS }}'
+          on() { [ "$1" != 'false' ] && echo "https://$2" || echo "_skipped_"; }
           {
             echo "### Deployed \`$APP_VERSION\`"
             echo ""
             echo "| Surface | URL |"
             echo "| --- | --- |"
-            echo "| Web | https://$APP_DOMAIN |"
-            echo "| API | https://api.$APP_DOMAIN |"
-            echo "| Docs | https://docs.$APP_DOMAIN |"
-            echo "| Billing | $([ -n "$STRIPE_SECRET_KEY" ] && echo 'enabled (Stripe)' || echo 'disabled') |"
+            echo "| Web | $(on "$web" "$APP_DOMAIN") |"
+            echo "| API | $(on "$api" "api.$APP_DOMAIN") |"
+            echo "| Docs | $(on "$docs" "docs.$APP_DOMAIN") |"
+            echo "| Billing | $([ -n "$STRIPE_SECRET_KEY" ] && echo 'enabled (Stripe)' || echo 'disabled (everything unlocked)') |"
           } >> "$GITHUB_STEP_SUMMARY"

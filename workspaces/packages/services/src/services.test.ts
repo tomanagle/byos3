@@ -47,7 +47,11 @@ const connRecord: ConnectorRecord = {
 function ctxFor(
   principal: Principal,
   role: string | null,
-  opts: { volumesInNamespace?: VolumeRecord[]; activeSub?: { seats: number } | null } = {},
+  opts: {
+    volumesInNamespace?: VolumeRecord[];
+    activeSub?: { seats: number } | null;
+    billingEnabled?: boolean;
+  } = {},
 ): ServiceContext {
   const connector = new Connector(connRecord, { vault, driverFactory: createDriver });
   const volume = new Volume(volRecord, { connector });
@@ -82,6 +86,7 @@ function ctxFor(
     memberships,
     access,
     subscriptions,
+    billingEnabled: opts.billingEnabled ?? true,
     vault,
     driverFactory: createDriver,
   };
@@ -189,6 +194,19 @@ test("free tier (no sub) is capped at 1 volume - the 2nd connect is denied", asy
     activeSub: null,
   });
   await expect(connectBucket(ctx, connectInput)).rejects.toMatchObject({ code: "limit_exceeded" });
+});
+
+test("billing disabled (self-host): every limit is unlimited, no gate fires", async () => {
+  // No Stripe key => no subscriptions => everything unlocked, even with an existing volume.
+  const ctx = ctxFor({ userId: "u1" }, "full", {
+    volumesInNamespace: [volRecord],
+    activeSub: null,
+    billingEnabled: false,
+  });
+  const ent = await resolveEntitlement(ctx, "ns_1");
+  expect(ent.paid).toBe(true);
+  expect(isUnlimited(ent.limits.volumes)).toBe(true);
+  expect(isUnlimited(ent.limits.opsPerMonth)).toBe(true);
 });
 
 test("entitlement: an active sub yields paid limits + seats; none yields free", async () => {

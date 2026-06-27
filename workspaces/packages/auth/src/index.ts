@@ -100,6 +100,10 @@ async function orgMemberCount(db: Db, orgId: string): Promise<number> {
 
 export function createAuth(opts: CreateAuthOptions) {
   const stripe = buildStripe(opts);
+  // Billing on only when a Stripe key is configured. When off (self-hosting), seats are unlimited -
+  // no subscription exists to buy them, so the team should not be capped. See billing.md.
+  const billingOn = Boolean(opts.stripe?.secretKey);
+  const UNLIMITED_SEATS = Number.MAX_SAFE_INTEGER;
   // GitHub OAuth, only when both credentials are present (otherwise email/password only).
   const socialProviders =
     opts.github?.clientId && opts.github.clientSecret
@@ -121,12 +125,17 @@ export function createAuth(opts: CreateAuthOptions) {
         // (owner only); an active subscription lifts it to its purchased seats. Pending invitations
         // are capped to the OPEN seats, so you can never invite more people than you can seat. Both
         // are enforced by Better Auth itself, so the cap holds for direct API calls, not just our UI.
-        membershipLimit: (_user, org) => activeSeats(opts.db, org.id),
-        invitationLimit: async ({ organization: org }) =>
-          Math.max(
-            0,
-            (await activeSeats(opts.db, org.id)) - (await orgMemberCount(opts.db, org.id)),
-          ),
+        // When billing is OFF (no Stripe key), seats are unlimited - a self-hosted team isn't capped.
+        membershipLimit: billingOn
+          ? (_user, org) => activeSeats(opts.db, org.id)
+          : () => UNLIMITED_SEATS,
+        invitationLimit: billingOn
+          ? async ({ organization: org }) =>
+              Math.max(
+                0,
+                (await activeSeats(opts.db, org.id)) - (await orgMemberCount(opts.db, org.id)),
+              )
+          : () => UNLIMITED_SEATS,
         schema: {
           organization: {
             additionalFields: {

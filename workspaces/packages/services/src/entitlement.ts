@@ -1,4 +1,10 @@
-import { FREE_LIMITS, PAID_LIMITS, type PlanLimits, withinLimit } from "@byos3/protocol";
+import {
+  FREE_LIMITS,
+  PAID_LIMITS,
+  UNLIMITED_LIMITS,
+  type PlanLimits,
+  withinLimit,
+} from "@byos3/protocol";
 import { AppError } from "@byos3/core";
 import type { ServiceContext } from "./context";
 
@@ -20,6 +26,10 @@ export async function resolveEntitlement(
   ctx: ServiceContext,
   namespaceId: string,
 ): Promise<Entitlement> {
+  // Billing off (no Stripe key) → no subscriptions exist and everything is unlocked (self-hosting).
+  if (!ctx.billingEnabled) {
+    return { limits: UNLIMITED_LIMITS, seats: Number.MAX_SAFE_INTEGER, paid: true };
+  }
   const sub = await ctx.subscriptions.activeSubscription(namespaceId);
   if (!sub) return { limits: FREE_LIMITS, seats: 1, paid: false };
   return { limits: PAID_LIMITS, seats: Math.max(1, sub.seats), paid: true };

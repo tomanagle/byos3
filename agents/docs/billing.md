@@ -77,13 +77,21 @@ budget into `commit(op, actorDeviceId, opsBudget)`; `-1` = unlimited (paid). **v
 only** - reads (`sync`/`list`) and presigns aren't counted yet; a short-window rate limit (429) and
 read metering can be layered on later via a KV/D1 counter or the Rate Limiting binding.
 
-## Disabled without a key
+## Disabled without a key → everything unlocked (self-hosting)
 
 Billing is **off unless `STRIPE_SECRET_KEY` is set** (`secrets.md`). `createAuth` builds the Stripe
-plugin only when the key is present, so on a keyless deploy the `/api/auth/stripe/*` endpoints
-simply don't exist. The web client mirrors this: a `billingEnabled` flag (a server fn reading the
-env) hides the rail's Billing entry and shows a "billing not enabled" state on `/billing` instead of
-the upgrade flow. Everyone runs on the free limits; core file sync is unaffected.
+plugin only when the key is present, so on a keyless deploy the `/api/auth/stripe/*` endpoints simply
+don't exist. The web client mirrors this: a `billingEnabled` flag (a server fn reading the env) hides
+the rail's Billing entry and shows a "billing not enabled" state on `/billing`.
+
+**Crucially, billing-off means every gate is lifted, not the free limits.** A self-hosted instance
+with no Stripe key should give its users *everything* - there's no one to pay, so capping them would
+be pointless. So when billing is off: `resolveEntitlement` returns `UNLIMITED_LIMITS` (unlimited
+volumes + no op budget) regardless of subscription, and the org seat caps (`membershipLimit` /
+`invitationLimit`) become unlimited (invite as many teammates as you like). The `ctx.billingEnabled`
+flag - set by each composition root from `STRIPE_SECRET_KEY` - drives the services-side bypass;
+`@byos3/auth` keys its seat-gate functions off the same Stripe-key presence. Result: clone, deploy
+without a Stripe key, and the whole product works for everyone with no subscription.
 
 ## Live provisioning (Pulumi)
 

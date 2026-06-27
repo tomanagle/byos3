@@ -83,6 +83,8 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
       memberships,
       access: new D1ResourceAccessRepository(db),
       subscriptions: new D1SubscriptionRepository(db),
+      // No Stripe key => billing off => entitlement gates lifted (self-hosting). See billing.md.
+      billingEnabled: Boolean((c.env as { STRIPE_SECRET_KEY?: string }).STRIPE_SECRET_KEY),
       vault,
       driverFactory: createDriver,
     };

@@ -48,6 +48,12 @@ export interface ServiceContext {
   access: ResourceAccessRepository;
   /** The namespace's paid subscription, for entitlement gates (billing.md). */
   subscriptions: SubscriptionResolver;
+  /**
+   * Whether billing is configured on this deploy (a Stripe key is set). When false, billing is OFF -
+   * there are no subscriptions and every gate is lifted (self-hosting without Stripe = everything
+   * unlocked). Resolved by each transport's composition root from the env. See billing.md.
+   */
+  billingEnabled: boolean;
   vault: Vault;
   driverFactory: DriverFactory;
 }

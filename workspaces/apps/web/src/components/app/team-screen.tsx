@@ -71,7 +71,8 @@ export function TeamScreen() {
     (i) => i.status === "pending",
   );
   const activeSub = subs.data?.find((s) => s.status === "active" || s.status === "trialing");
-  const seats = activeSub?.seats ?? 1;
+  // Billing off (self-hosted, no Stripe) => unlimited seats; else the active sub's seats (free = 1).
+  const seats = billingEnabled ? (activeSub?.seats ?? 1) : Number.POSITIVE_INFINITY;
   const used = members.length + invites.length;
   const seatsLeft = Math.max(0, seats - used);
   const myRole = members.find((m) => m.userId === myUserId)?.role;
@@ -123,9 +124,18 @@ export function TeamScreen() {
         <>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3">
             <span className="text-sm">
-              <span className="font-mono tabular-nums">{used}</span> of{" "}
-              <span className="font-mono tabular-nums">{seats}</span> seat{seats === 1 ? "" : "s"}{" "}
-              used
+              {billingEnabled ? (
+                <>
+                  <span className="font-mono tabular-nums">{used}</span> of{" "}
+                  <span className="font-mono tabular-nums">{seats}</span> seat
+                  {seats === 1 ? "" : "s"} used
+                </>
+              ) : (
+                <>
+                  <span className="font-mono tabular-nums">{members.length}</span> member
+                  {members.length === 1 ? "" : "s"} · unlimited (self-hosted)
+                </>
+              )}
             </span>
             {billingEnabled && (
               <Link to="/billing" className="text-sm font-medium text-primary hover:underline">

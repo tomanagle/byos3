@@ -23,10 +23,9 @@ export async function createServiceContext(headers: Headers): Promise<ServiceCon
   const session = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
   if (!session?.user) return null;
 
+  const e = env as { CREDENTIAL_ENCRYPTION_KEY: string; STRIPE_SECRET_KEY?: string };
   const db = createSessionDb(env.DB);
-  const vault = new CredentialVault(
-    (env as { CREDENTIAL_ENCRYPTION_KEY: string }).CREDENTIAL_ENCRYPTION_KEY,
-  );
+  const vault = new CredentialVault(e.CREDENTIAL_ENCRYPTION_KEY);
   const connectors = new D1ConnectorRepository(db, vault, createDriver);
   return {
     principal: {
@@ -38,6 +37,8 @@ export async function createServiceContext(headers: Headers): Promise<ServiceCon
     memberships: new D1MembershipRepository(db),
     access: new D1ResourceAccessRepository(db),
     subscriptions: new D1SubscriptionRepository(db),
+    // No Stripe key => billing off => every entitlement gate is lifted (self-hosting). See billing.md.
+    billingEnabled: Boolean(e.STRIPE_SECRET_KEY),
     vault,
     driverFactory: createDriver,
   };

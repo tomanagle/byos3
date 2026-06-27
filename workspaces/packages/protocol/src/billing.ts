@@ -32,6 +32,15 @@ export const PAID_LIMITS: PlanLimits = {
   opsPerMonth: 500_000,
 };
 
+/**
+ * Everything unlimited. Used when **billing is disabled** (no Stripe key configured) - a self-hosted
+ * instance with no subscriptions should unlock every feature, so no gate ever fires. See billing.md.
+ */
+export const UNLIMITED_LIMITS: PlanLimits = {
+  volumes: -1,
+  opsPerMonth: -1,
+};
+
 export function isUnlimited(limit: number): boolean {
   return limit === -1;
 }

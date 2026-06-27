@@ -1,9 +1,14 @@
 # byos3
 
-A Dropbox-style file storage and sync app where you **bring your own S3-compatible bucket** (AWS S3,
-Cloudflare R2, Backblaze B2, Wasabi, MinIO, or any custom S3 endpoint). Your files live in storage
-you own; byos3 keeps only encrypted credentials and never sees your bytes (clients transfer directly
-to the bucket via presigned URLs).
+A file storage and sync app where you **bring your own S3-compatible bucket** (AWS S3, Cloudflare R2,
+Backblaze B2, Wasabi, MinIO, or any custom S3 endpoint). Your files live in storage you own; byos3
+keeps only encrypted credentials and never sees your bytes (clients transfer directly to the bucket
+via presigned URLs).
+
+**Self-hosting is a first-class path.** Deploy your own instance with just GitHub secrets/variables -
+no code changes. **Billing is optional:** leave `STRIPE_SECRET_KEY` unset and subscriptions are
+disabled entirely - every feature is unlocked for everyone, no plan limits, no seat caps. Add a
+Stripe key only if you actually want to charge.
 
 It runs on Cloudflare Workers as a Bun monorepo: a TanStack Start web app (`workspaces/apps/web`) and
 a Hono OpenAPI Worker (`workspaces/apps/api`) over a shared services layer. Architecture and
@@ -65,6 +70,8 @@ workflow injects your domain and secrets at deploy time.
 | `PULUMI_CONFIG_PASSPHRASE` | encrypts secrets inside the Pulumi state - `openssl rand -base64 32`. **Set once and never change it** (it decrypts existing state); **back it up** outside GitHub (Actions secrets are write-only) |
 | `BETTER_AUTH_SECRET` | random 32+ char string - `openssl rand -base64 32` |
 | `CREDENTIAL_ENCRYPTION_KEY` | 32-byte base64 key - `openssl rand -base64 32` |
+| `STRIPE_SECRET_KEY` | **optional** - your **live** Stripe key. Enables billing: Pulumi provisions the product/prices/webhook and the app runs Checkout. **Omit to run with billing disabled (everything unlocked).** |
+| `AUTH_GITHUB_CLIENT_SECRET` | **optional** - GitHub OAuth app secret; enables "Continue with GitHub" (pair with `AUTH_GITHUB_CLIENT_ID`). Omit for email/password only. |
 
 **Variables**
 
@@ -73,6 +80,15 @@ workflow injects your domain and secrets at deploy time.
 | `APP_DOMAIN` | `example.com` | your apex domain (the zone in your CF account) |
 | `PULUMI_STACK` | `production` | the Pulumi stack name (optional, default `production`) |
 | `PULUMI_STATE_BUCKET` | `byos3-pulumi-state` | R2 bucket for state (optional, auto-created) |
+| `AUTH_GITHUB_CLIENT_ID` | `Iv1.abc123` | **optional** - GitHub OAuth app client id (not secret; pairs with `AUTH_GITHUB_CLIENT_SECRET`). May be a Secret instead. |
+| `DEPLOY_WEB` | `true` | **optional**, default `true`. Set `false` to skip deploying the web app. |
+| `DEPLOY_API` | `true` | **optional**, default `true`. Set `false` to skip deploying the API Worker. |
+| `DEPLOY_DOCS` | `true` | **optional**, default `true`. Set `false` to skip publishing the API reference site. |
+
+> **Minimum to self-host:** the six secrets above through `CREDENTIAL_ENCRYPTION_KEY`, plus the
+> `APP_DOMAIN` variable. Everything else is optional - skip Stripe (billing off, all features
+> unlocked), skip GitHub OAuth (email/password only), and leave the `DEPLOY_*` flags unset to deploy
+> all three surfaces.
 
 ### Cloudflare API token permissions
 
