@@ -45,18 +45,20 @@ function AcceptInvitation() {
               You&apos;ve been invited
             </h1>
             <p className="mt-2 text-base text-muted-foreground">
-              Sign in or create an account with the invited email, then open this link again to
-              join.
+              Sign in or create an account with the invited email - you&apos;ll come right back here
+              to join.
             </p>
             <div className="mt-5 flex justify-center gap-2.5">
               <Link
                 to="/sign-in"
+                search={{ redirect: "accept", invite: id }}
                 className="inline-flex h-10 items-center rounded-lg bg-primary px-4 text-base font-semibold text-primary-foreground hover:brightness-110"
               >
                 Sign in
               </Link>
               <Link
                 to="/sign-up"
+                search={{ redirect: "accept", invite: id }}
                 className="inline-flex h-10 items-center rounded-lg border border-border bg-card px-4 text-base font-medium hover:bg-accent"
               >
                 Create account

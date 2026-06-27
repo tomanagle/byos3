@@ -8,15 +8,30 @@ import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { authClient } from "#/lib/auth-client";
 
-export const Route = createFileRoute("/sign-up")({ component: SignUp });
+// `redirect=accept` + `invite=<id>` carry a pending invitation through signup so the new user lands
+// back on /accept-invitation and joins that org (no redundant personal one). See accept-invitation.tsx.
+export const Route = createFileRoute("/sign-up")({
+  validateSearch: (s: Record<string, unknown>) => ({
+    redirect: typeof s.redirect === "string" ? s.redirect : undefined,
+    invite: typeof s.invite === "string" ? s.invite : undefined,
+  }),
+  component: SignUp,
+});
 
 function SignUp() {
   const navigate = useNavigate();
+  const { redirect, invite } = Route.useSearch();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const afterAuth = () =>
+    redirect === "accept" && invite
+      ? navigate({ to: "/accept-invitation", search: { id: invite } })
+      : navigate({ to: "/" });
+  const callbackURL = redirect === "accept" && invite ? `/accept-invitation?id=${invite}` : "/";
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,7 +43,7 @@ function SignUp() {
       setError(res.error.message ?? "Couldn't create your account.");
       return;
     }
-    await navigate({ to: "/" });
+    await afterAuth();
   }
 
   return (
@@ -38,13 +53,17 @@ function SignUp() {
       footer={
         <>
           Already have an account?{" "}
-          <Link to="/sign-in" className="font-medium text-primary hover:underline">
+          <Link
+            to="/sign-in"
+            search={{ redirect, invite }}
+            className="font-medium text-primary hover:underline"
+          >
             Sign in
           </Link>
         </>
       }
     >
-      <GithubButton callbackURL="/" />
+      <GithubButton callbackURL={callbackURL} />
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="name">Name</Label>

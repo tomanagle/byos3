@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Activity, Boxes, CreditCard, Files, KeyRound, Plus, Users } from "lucide-react";
 import { providerFor } from "#/lib/providers";
 import { cn } from "#/lib/utils";
+import { OrgSwitcher } from "./org-switcher";
 
 export type View = "files" | "volumes" | "keys" | "team";
 
@@ -34,6 +35,7 @@ export function VolumeRail({
 }) {
   return (
     <aside className="flex w-[264px] shrink-0 flex-col overflow-y-auto border-r border-border bg-card/40">
+      <OrgSwitcher />
       <nav className="flex flex-col gap-0.5 p-2.5">
         {NAV.map((n) => (
           <button

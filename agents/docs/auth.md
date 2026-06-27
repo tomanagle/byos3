@@ -44,13 +44,19 @@ tables - `connector`, `volume`, `grant`, `shareLink`, `mount` - reference `organ
 
 ## Account lifecycle
 
-- **On signup:** create the user, then create their default **personal organization** (`type:
-  personal` - the personal namespace) and the org-plugin `member` row (`owner`).
-  `createCustomerOnSignUp: true` provisions the Stripe customer (`referenceId` = that organization id).
-- **Email verification:** optionally required before privileged actions (e.g. connecting a volume
-  or upgrading) via `requireEmailVerification`.
-- **Sessions:** standard Better Auth sessions; the session resolves `user.id`, from which we load
-  namespace membership for authorization.
+- **On signup:** create the user only - we do **not** force a personal org (the old eager hook is
+  gone). A namespace is resolved **lazily**: the first time a user who belongs to none enters the
+  workspace, the web composition root (`apps/web/src/server/ctx.ts`) creates a `personal-<userId>`
+  org (`createOrganization`, which makes it active). So a user who signs up to **accept an invite**
+  just joins that org - no redundant personal namespace. `createCustomerOnSignUp: true` still
+  provisions the Stripe customer.
+- **Active namespace:** a user can belong to several orgs (their personal one + any team they joined).
+  The **active organization** on the session (`session.activeOrganizationId`) is the workspace they're
+  in; `ctx.ts` honors it when still a member, else defaults to a membership (preferring a team org),
+  else lazily creates the personal one. The rail's org switcher (`setActiveOrganization`) changes it.
+- **Email verification:** optionally required before privileged actions via `requireEmailVerification`.
+- **Sessions:** standard Better Auth sessions; the session resolves `user.id` + the active org, from
+  which we load namespace membership for authorization.
 
 ## Authorization
 

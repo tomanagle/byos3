@@ -14,7 +14,7 @@ session is resolved once at the root and every route branches on it.
 | `/keys` | `routes/_app.keys.tsx` | protected | API-key minting |
 | `/team` | `routes/_app.team.tsx` | protected | org members + seat-gated invitations (billing.md) |
 | `/accept-invitation?id=` | `routes/accept-invitation.tsx` | public | invitee joins an org (own centered page, not the workspace shell; prompts sign-in) |
-| `/sign-in`, `/sign-up` | `routes/sign-in.tsx`, `sign-up.tsx` | public | Better Auth forms (own `AuthShell`, not the workspace shell) |
+| `/sign-in`, `/sign-up` | `routes/sign-in.tsx`, `sign-up.tsx` | public | Better Auth forms (own `AuthShell`). Accept `?redirect=accept&invite=<id>` to return to `/accept-invitation` after auth, so an invited new user joins that org instead of landing in the workspace (which would lazily create a redundant personal org). |
 | `/api/auth/$`, `/api/ns/socket` | `routes/api/**` | n/a | server routes (Better Auth handler, namespace WebSocket) |
 
 `/volumes` and `/volumes/:id` share a passthrough layout (`routes/_app.volumes.tsx`) that guards the
