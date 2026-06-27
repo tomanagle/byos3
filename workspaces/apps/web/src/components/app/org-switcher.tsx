@@ -34,7 +34,11 @@ export function OrgSwitcher() {
     },
   });
 
-  const list = orgs.data ?? [];
+  // The ["orgs"] key is shared with billing/team screens (which cache the raw list), so be defensive:
+  // tolerate a non-array or null entries rather than crashing the rail.
+  const list: Org[] = Array.isArray(orgs.data)
+    ? orgs.data.filter((o): o is Org => o != null && typeof o.id === "string")
+    : [];
   const active = list.find((o) => o.id === activeId) ?? list[0];
 
   const switchTo = useMutation({
