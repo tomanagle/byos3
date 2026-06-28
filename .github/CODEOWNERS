@@ -1,0 +1,5 @@
+# Code owners are auto-requested for review on every PR. Combined with a branch ruleset that requires
+# review, this routes all changes through the maintainer. Most-specific match wins.
+# Docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @tomanagle

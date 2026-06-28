@@ -2,6 +2,7 @@
   "name": "byos3",
   "version": "0.1.6",
   "private": true,
+  "license": "MIT",
   "workspaces": [
     "workspaces/apps/*",
     "workspaces/packages/*",
@@ -19,6 +20,7 @@
     "format:check": "oxfmt --check .",
     "secrets:setup": "bun scripts/setup-secrets.ts",
     "release": "bun dev/release.ts",
+    "release:tag": "bun dev/release.ts tag",
     "skills:list": "intent list",
     "skills:validate": "intent validate",
     "skills:stale": "intent stale",

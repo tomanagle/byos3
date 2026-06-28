@@ -122,14 +122,17 @@ not this token; this token's R2 permission is only for creating the bucket.
 
 ### Deploy
 
-Cut a version tag (or run the **Deploy** workflow manually from the Actions tab):
+Releases are version tags. With a protected `main`, the flow is two steps (no admin bypass needed):
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+bun run release minor   # bump on a release/* branch + open a PR (CI gates it)
+# ...review + merge the PR...
+git switch main && git pull
+bun run release:tag     # tag v<version> on main and push the tag → triggers the deploy
 ```
 
-The tag triggers the pipeline, which will:
+(Or cut the tag by hand: `git tag v1.0.0 && git push origin v1.0.0`, or run the **Deploy** workflow
+manually from the Actions tab.) The tag triggers the pipeline, which will:
 
 1. **Pulumi** (state in your R2 bucket, created if missing) provisions a D1 database and a Turnstile
    widget for `APP_DOMAIN`.
@@ -143,3 +146,13 @@ The tag triggers the pipeline, which will:
 That's it: `https://APP_DOMAIN` (app), `https://api.APP_DOMAIN` (API), and `https://docs.APP_DOMAIN`
 (API reference) come up on your domain. There is intentionally no `app.` subdomain. Full detail and
 the Pulumi/Wrangler split are in [`agents/docs/deployment.md`](./agents/docs/deployment.md).
+
+## Contributing
+
+Contributions welcome - see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for setup and the PR workflow, and
+[`AGENTS.md`](./AGENTS.md) for architecture. Report security issues privately per
+[`SECURITY.md`](./SECURITY.md).
+
+## License
+
+[MIT](./LICENSE) © Tom Nagle

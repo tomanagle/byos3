@@ -75,13 +75,22 @@ its own deps in CI.
 
 ## Releasing & versioning
 
-The **root `package.json` `version`** is the single source of truth. `bun run release [patch|minor|major]`
-(`dev/release.ts`, default `patch`) runs the CI gate (lint, format, build - tags bypass CI, so the
-gate runs here), bumps that version, commits **only** `package.json`, tags `v<version>`, and pushes
-the tag - which triggers the deploy. Use `--dry-run` to preview the next version, `--skip-checks` to
-skip the gate. The docs site imports the root version (`scripts/build-docs.ts`) so the published API
-reference always shows what's live. Because only `package.json` is committed, unrelated working-tree
-changes never ride along into a release.
+The **root `package.json` `version`** is the single source of truth (the docs site imports it via
+`scripts/build-docs.ts`, so the published reference always shows what's live). Releasing is **two
+steps** so it works with a protected `main` (PR-required) without admin bypass:
+
+1. `bun run release [patch|minor|major]` (`dev/release.ts`, default `patch`) runs the gate
+   (lint/format/build), bumps the version on a **`release/v<next>` branch**, pushes it, and opens a
+   PR. Nothing is pushed to `main`. (`--dry-run` previews; `--skip-checks` skips the local gate - the
+   PR's CI still gates the merge.)
+2. Review + **merge the PR** (CI must pass).
+3. `git switch main && git pull`, then `bun run release:tag` - on an up-to-date `main` it tags
+   `v<version>` and pushes **only the tag**. A tag push isn't a branch push, so branch protection
+   doesn't block it; the tag triggers `deploy.yml`.
+
+The tag must be created by a maintainer (guard `v*` tag creation with a tag ruleset). Because the
+bump lands via a reviewed PR and the release only ever pushes a tag, no one needs to bypass branch
+protection to ship.
 
 ## Turnstile keys (split by trust boundary)
 
