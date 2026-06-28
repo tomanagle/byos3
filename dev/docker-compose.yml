@@ -105,6 +105,44 @@ services:
       - ..:/app
       - /app/node_modules
 
+  # An S3-compatible "fake bucket" (MinIO) that's part of the local stack - connect it from the web
+  # app's Connect dialog as a Custom S3 volume, and the e2e suite uses it too (no separate compose):
+  #   endpoint http://localhost:${MINIO_PORT:-9400} · key byos3 · secret byos3secret · bucket byos3-e2e
+  # Non-standard host ports (9000/9001 are often taken, e.g. OrbStack); override with MINIO_PORT /
+  # MINIO_CONSOLE_PORT / MINIO_ROOT_USER / MINIO_ROOT_PASSWORD / MINIO_BUCKET.
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-byos3}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-byos3secret}
+    ports:
+      - "${MINIO_PORT:-9400}:9000"
+      - "${MINIO_CONSOLE_PORT:-9401}:9001"
+    volumes:
+      - minio:/data
+
+  # Creates the bucket once MinIO is up, then exits 0 (idempotent). The e2e global-setup waits on it.
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-byos3}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-byos3secret}
+      MINIO_BUCKET: ${MINIO_BUCKET:-byos3-e2e}
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        until mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"; do
+          echo "waiting for minio..."; sleep 1;
+        done
+        mc mb -p "local/$$MINIO_BUCKET"
+        echo "bucket local/$$MINIO_BUCKET ready"
+
   # Local Stripe: ensures the sandbox product/prices exist, writes price IDs + the webhook signing
   # secret into web .dev.vars, and forwards webhook events to web. No-ops (exits 0) when
   # STRIPE_SECRET_KEY isn't set, so core local dev needs no Stripe. See dev/stripe-setup.sh,
@@ -121,3 +159,4 @@ services:
 
 volumes:
   d1:
+  minio:

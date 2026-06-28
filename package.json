@@ -31,8 +31,6 @@
     "docker:down": "docker compose -f dev/docker-compose.yml down",
     "docker:nuke": "docker compose -f dev/docker-compose.yml down -v --rmi local --remove-orphans",
     "e2e": "bun run --filter='@byos3/e2e' test",
-    "e2e:up": "docker compose -f dev/docker-compose.e2e.yml up -d",
-    "e2e:down": "docker compose -f dev/docker-compose.e2e.yml down -v",
     "prepare": "git rev-parse --git-dir > /dev/null 2>&1 && lefthook install || true"
   },
   "devDependencies": {

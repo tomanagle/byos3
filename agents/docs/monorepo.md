@@ -25,7 +25,7 @@ workspaces/
     crypto/     envelope encryption for connector creds; E2E seam
     logging/    wide-event logger (one canonical JSON event per request/hop)
     ai/         (Later) Workers AI + Vectorize RAG pipeline
-  tests/        @byos3/e2e - Playwright e2e suite (storage round-trips, app flows) + MinIO fixture
+  tests/        @byos3/e2e - Playwright e2e suite (storage round-trips, app flows); MinIO is in the dev stack
 infra/          Pulumi IaC (Cloudflare D1 + Turnstile) - standalone, NOT a workspace member
 agents/         docs/ + plans/  (this documentation)
 ```
@@ -102,8 +102,9 @@ created/migrated inside the DO's constructor/`blockConcurrencyWhile`.
 
 ## Deployment
 
-GitHub Actions: `ci.yml` (lint + format-check + build) and `deploy.yml` (Pulumi `up` → inject D1
-id/Turnstile key → build → migrate → `wrangler deploy`). Pulumi (`infra/`) owns D1 + Turnstile;
+GitHub Actions: separate per-concern workflows - `lint.yml`, `test.yml`, `build.yml`, `e2e.yml` - and
+`deploy.yml` (Pulumi `up` → inject D1 id/Turnstile key → build → migrate → `wrangler deploy`).
+Pulumi (`infra/`) owns D1 + Turnstile;
 Wrangler ships the Worker. Full detail + required secrets in `deployment.md`.
 
 ## Testing
@@ -114,9 +115,10 @@ Two tiers, by what they need to run:
   `@cloudflare/vitest-pool-workers` for Worker/DO integration (journal ordering, commit idempotency,
   WS fan-out). These need no external services - fast, run on every change.
 - **e2e → Playwright, in `workspaces/tests` (`@byos3/e2e`).** Run with `bun run e2e`. These exercise
-  real, containerized infrastructure: a **MinIO** fake bucket (`dev/docker-compose.e2e.yml`) that
-  Playwright's `global-setup`/`global-teardown` brings up and tears down. The storage round-trip spec
+  real infrastructure: a **MinIO** fake bucket that's part of the **local stack**
+  (`dev/docker-compose.yml` - no separate e2e compose) which Playwright's `global-setup` ensures is up,
+  plus the web app itself (the config's `webServer` runs `bun run dev`). The storage round-trip spec
   mounts MinIO via the `custom` provider and verifies the presigned, direct-to-bucket transfer path;
-  browser-driven app flows (Connect → upload → live tree) get added as a second project. Playwright
-  runs Node-side, so the suite works in CI containers. Provider compatibility is separately certified
+  browser specs drive register → connect → upload and the invite flow. Playwright runs Node-side, so
+  the suite works in CI containers. Provider compatibility is separately certified
   with **ceph/s3-tests** (`agents/docs/s3-compatibility.md`).

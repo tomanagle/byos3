@@ -276,8 +276,8 @@ Legend: ✅ supported · ⚠️ conditional · ❌ not via S3 API · ❓ unknown
 The escape hatch: instead of picking a named provider, the user picks **Custom** and supplies their
 own **endpoint + access key + secret + bucket**. As long as the server speaks S3 (SigV4 +
 path-style addressing), it mounts and works - no provider-specific code path. This covers
-self-hosted servers, niche providers we haven't profiled, and **the MinIO fake bucket used by the
-e2e tests** (`dev/docker-compose.e2e.yml`; see `dev/README.md`).
+self-hosted servers, niche providers we haven't profiled, and **the MinIO fake bucket** that ships in
+the local stack (`dev/docker-compose.yml`) and the e2e suite uses (see `dev/README.md`).
 
 - **Connect contract:** the **endpoint is required** (there is no default to fall back to). Region
   is accepted but treated as `any` (passed to SigV4; many servers ignore it / want `us-east-1`).

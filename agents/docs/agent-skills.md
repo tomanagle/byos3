@@ -65,5 +65,5 @@ bun run skills:list       # the registry: every intent-enabled package + its ski
 - **When a referenced doc changes:** regenerate the skill, bump `metadata.library_version`, and commit
   - otherwise CI's `intent stale` step flags it.
 
-CI runs `intent validate` + `intent stale` (see `.github/workflows/ci.yml`). The skills are authored
+CI runs `intent validate` + `intent stale` (see `.github/workflows/lint.yml`). The skills are authored
 from `agents/docs/*`, so **change behavior → update the doc → regenerate the skill** in the same change.

@@ -1,0 +1,41 @@
+name: E2E
+
+# Full-stack e2e (Playwright): brings up the local stack's MinIO fake bucket (docker) + the web app
+# (vite, billing OFF so everything's unlocked), then drives the real UI - register, connect a bucket,
+# upload, invite a teammate. The HTML report is uploaded as an artifact on every run. See
+# workspaces/tests.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      # Local platform secrets (random keys + Turnstile TEST keys, no Stripe) → web/api .dev.vars.
+      - name: Generate local secrets
+        run: bun run secrets:setup
+      - name: Migrate local D1
+        run: bun run --filter='@byos3/web' db:migrate:local
+      - name: Install Playwright (chromium + OS deps)
+        working-directory: workspaces/tests
+        run: bunx playwright install --with-deps chromium
+      # global-setup brings up MinIO from the local compose; the playwright webServer starts `bun run dev`.
+      - name: Run e2e
+        run: bun run e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: workspaces/tests/playwright-report/
+          retention-days: 14

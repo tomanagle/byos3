@@ -54,8 +54,10 @@ This is a dev convenience only - production deploys to Cloudflare via Wrangler (
 The **e2e** suite lives in `workspaces/tests` and runs under **Playwright** (unit/integration tests
 stay with their packages, run by bun/vite). It exercises two layers of real infrastructure:
 
-- **MinIO** (`docker-compose.e2e.yml`: a server + one-shot bucket-creator) - the "fake bucket",
-  brought up/torn down automatically by `global-setup.ts` / `global-teardown.ts`.
+- **MinIO** - the "fake bucket" is a service in the **local stack** (`dev/docker-compose.yml`), so
+  `bun run docker:up` includes it. There's **no separate e2e compose**: `global-setup.ts` just brings
+  up the `minio` + `createbucket` services (idempotent - a no-op if the stack is already up) and
+  leaves them running (stop the stack with `bun run docker:down`).
 - **The web app itself** - Playwright's `webServer` runs `bun run dev` (vite + the Cloudflare
   plugin's workerd, on **:3000**). Both the worker (the connect probe) and the browser (presigned
   transfers) are on the host, so they reach the same `localhost` MinIO - no container address split.
@@ -67,10 +69,7 @@ stay with their packages, run by bun/vite). It exercises two layers of real infr
 `bun run --filter='@byos3/web' db:migrate:local` (migrates the local D1). Then:
 
 ```bash
-bun run e2e          # global-setup ups MinIO → starts the web app → runs the specs → tears MinIO down
-bun run e2e:up        # just start MinIO (e.g. to connect from the web app)
-bun run e2e:down      # stop + remove it (and its volume)
-E2E_KEEP=1 bun run e2e # run the suite but leave MinIO up afterwards
+bun run e2e          # ensures MinIO is up → starts the web app → runs the specs
 ```
 
 **Compose flows** with the helpers + fixtures (`fixtures.ts`, `helpers/`):
@@ -94,10 +93,10 @@ await owner.workspace.uploadFile("a.txt", "hi");     // hidden input → presign
 - `billing.spec.ts` - asserts the billing-disabled (self-host) state in CI; the actual Stripe upgrade
   is gated behind `E2E_STRIPE=1` (run locally with the `stripe` sidecar + a sandbox key).
 
-In **CI** (`.github/workflows/ci.yml` `e2e` job) the suite runs on every PR + push to main and uploads
-the Playwright **HTML report** as an artifact (`playwright-report`).
+In **CI** (`.github/workflows/e2e.yml`) the suite runs on every PR + push to main and uploads the
+Playwright **HTML report** as an artifact (`playwright-report`).
 
-With `e2e:up` you can also mount MinIO from the web app's **Connect** dialog as a **Custom S3** volume:
+After `bun run docker:up` you can also mount MinIO from the web app's **Connect** dialog as a **Custom S3** volume:
 
 > endpoint `http://localhost:9400` · key `byos3` · secret `byos3secret` · bucket `byos3-e2e`
 

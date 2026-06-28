@@ -5,12 +5,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
- * MinIO "fake bucket" lifecycle for the e2e suite. Matches the defaults in
- * `dev/docker-compose.e2e.yml`; override via the same env vars. Used by global-setup/teardown and
- * read by specs that talk to the bucket.
+ * MinIO "fake bucket" for the e2e suite. It is part of the LOCAL stack (`dev/docker-compose.yml`) -
+ * there's no separate e2e compose - so global-setup just brings up the `minio` + `createbucket`
+ * services (idempotent; a no-op if `bun run docker:up` already started them), and never tears the
+ * local stack down. Override the defaults via the same env vars the compose reads.
  */
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const COMPOSE = "dev/docker-compose.e2e.yml";
+const COMPOSE = "dev/docker-compose.yml";
 
 export const MINIO = {
   port: process.env.MINIO_PORT ?? "9400",
@@ -22,23 +23,16 @@ export const MINIO = {
   bucket: process.env.MINIO_BUCKET ?? "byos3-e2e",
 };
 
-function compose(args: string[]): void {
-  execFileSync("docker", ["compose", "-f", COMPOSE, ...args], { cwd: repoRoot, stdio: "inherit" });
-}
-
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
+/** Ensure the local stack's MinIO + bucket are up (only those two services - not the whole stack). */
 export async function startMinio(): Promise<void> {
-  compose(["up", "-d"]);
-  await waitForHealth();
-  await waitForBucket();
-}
-
-export function stopMinio(): void {
-  execFileSync("docker", ["compose", "-f", COMPOSE, "down", "-v"], {
+  execFileSync("docker", ["compose", "-f", COMPOSE, "up", "-d", "minio", "createbucket"], {
     cwd: repoRoot,
     stdio: "inherit",
   });
+  await waitForHealth();
+  await waitForBucket();
 }
 
 async function waitForHealth(timeoutMs = 60_000): Promise<void> {

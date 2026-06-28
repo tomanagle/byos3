@@ -3,8 +3,8 @@ import { defineConfig } from "@playwright/test";
 /**
  * Playwright drives the byos3 **e2e** suite (unit/integration tests stay with their packages, run by
  * bun/vite). It exercises real infrastructure:
- *   - the MinIO "fake bucket" from `dev/docker-compose.e2e.yml`, brought up/torn down by
- *     global-setup/teardown;
+ *   - the MinIO "fake bucket" - part of the LOCAL stack (`dev/docker-compose.yml`); global-setup
+ *     ensures it's up (no separate e2e compose) and leaves it running;
  *   - the web app itself, started by the `webServer` below (`bun run dev` → vite + the Cloudflare
  *     plugin's workerd, on :3000). Running the app on the HOST (not in a container) means both the
  *     worker's connectivity probe AND the browser's presigned transfers reach the same MinIO endpoint
@@ -28,8 +28,8 @@ export default defineConfig({
   reporter: process.env.CI
     ? [["github"], ["html", { open: "never" }], ["list"]]
     : [["list"], ["html", { open: "never" }]],
+  // No global teardown: MinIO is part of the local stack (`bun run docker:down` stops it).
   globalSetup: "./global-setup.ts",
-  globalTeardown: "./global-teardown.ts",
   use: {
     baseURL: BASE_URL,
     trace: "on-first-retry",

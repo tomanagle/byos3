@@ -1,0 +1,26 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      # Packages and the API run in SEPARATE bun-test processes on purpose: @hono/zod-openapi extends
+      # Zod globally for the API, which clashes with the plain-zod packages if they share one process.
+      # The e2e suite has its own workflow (it needs a live MinIO + the app).
+      - name: Tests (packages)
+        run: bun test workspaces/packages
+      - name: Tests (api)
+        run: bun test workspaces/apps/api

@@ -1,0 +1,27 @@
+name: Lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: oxlint
+        run: bun run lint
+      - name: oxfmt --check
+        run: bun run format:check
+      # Agent skills (@tanstack/intent): frontmatter must validate, and skills must not be stale vs
+      # the source docs they reference. See agents/docs/agent-skills.md.
+      - name: Agent skills (validate + stale)
+        run: bunx @tanstack/intent validate && bunx @tanstack/intent stale

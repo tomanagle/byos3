@@ -44,8 +44,9 @@ its own deps in CI.
 
 ## GitHub Actions
 
-- **`.github/workflows/ci.yml`** (PRs + pushes): `bun install` → `oxlint` → `oxfmt --check` →
-  `bun run build`. The gate for merges.
+- **CI workflows** (PRs + pushes), one per concern - the gate for merges: `lint.yml` (`oxlint` +
+  `oxfmt --check` + agent-skills validate/stale), `test.yml` (`bun test` packages + api), `build.yml`
+  (`bun run build`), and `e2e.yml` (Playwright against MinIO + the app; uploads an HTML report).
 - **`.github/workflows/deploy.yml`** (**version tag** `v*` / manual dispatch): the production pipeline.
   Deploys are driven by tags - `bun run release [patch|minor|major]` bumps the **root package.json**
   version, commits it, and pushes `v<version>` - not by branch pushes, so every release is deliberate
