@@ -48,6 +48,9 @@ const webVars: Record<string, string> = {
   TURNSTILE_SECRET_KEY: TURNSTILE_TEST_SECRET,
   CREDENTIAL_ENCRYPTION_KEY: credKey,
   BETTER_AUTH_SECRET: authSecret,
+  // Local dev points connectors at MinIO/localhost (http, private host), so relax the SSRF endpoint
+  // guard here. Hosted deploys leave this unset = require https + public hosts. See agents/docs/secrets.md.
+  ALLOW_PRIVATE_S3_ENDPOINTS: "true",
   // Optional - fill in to enable; blank is fine for core local dev.
   STRIPE_SECRET_KEY: "",
   STRIPE_WEBHOOK_SECRET: "",
@@ -55,6 +58,7 @@ const webVars: Record<string, string> = {
 const apiVars: Record<string, string> = {
   CREDENTIAL_ENCRYPTION_KEY: credKey,
   BETTER_AUTH_SECRET: authSecret,
+  ALLOW_PRIVATE_S3_ENDPOINTS: "true",
 };
 
 await writeVars(WEB, webVars);

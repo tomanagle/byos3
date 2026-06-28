@@ -11,6 +11,10 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 CREDENTIAL_ENCRYPTION_KEY=
 BETTER_AUTH_SECRET=
 
+# Local dev points connectors at MinIO/localhost (http + private host), so relax the SSRF endpoint
+# guard. Hosted deploys leave this unset = require https + public S3 endpoints. See agents/docs/secrets.md.
+ALLOW_PRIVATE_S3_ENDPOINTS=true
+
 # Billing (optional - leave blank for core local dev). Set STRIPE_SECRET_KEY to your Stripe SANDBOX
 # secret key; the `stripe` dev container (dev/stripe-setup.sh) then ensures the product/prices exist
 # and AUTO-FILLS the three vars below into your .dev.vars. See agents/docs/billing.md.

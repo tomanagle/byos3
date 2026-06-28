@@ -60,6 +60,12 @@ export interface ServiceContext {
    * unlocked). Resolved by each transport's composition root from the env. See billing.md.
    */
   billingEnabled: boolean;
+  /**
+   * Whether user-supplied S3 endpoints may be http / loopback / private hosts (self-hosted MinIO or
+   * local dev). Default false on a hosted deploy = require https + public hosts (SSRF guard). Set from
+   * ALLOW_PRIVATE_S3_ENDPOINTS by each transport's composition root. See @byos3/s3 endpoint.ts.
+   */
+  allowPrivateEndpoint: boolean;
   vault: Vault;
   driverFactory: DriverFactory;
 }

@@ -10,14 +10,19 @@ import { MINIO } from "../minio";
  * stand-in for the browser's fetch).
  */
 function driver() {
-  return createDriver({
-    provider: "custom",
-    endpoint: MINIO.endpoint,
-    region: "us-east-1",
-    accessKeyId: MINIO.accessKeyId,
-    secret: MINIO.secret,
-    bucket: MINIO.bucket,
-  });
+  // MinIO runs on http://localhost - a private/loopback host that the SSRF guard blocks by default.
+  // allowPrivate mirrors a self-hosted/dev deploy (ALLOW_PRIVATE_S3_ENDPOINTS=true).
+  return createDriver(
+    {
+      provider: "custom",
+      endpoint: MINIO.endpoint,
+      region: "us-east-1",
+      accessKeyId: MINIO.accessKeyId,
+      secret: MINIO.secret,
+      bucket: MINIO.bucket,
+    },
+    { allowPrivate: true },
+  );
 }
 
 test("custom provider: presigned PUT → HEAD → GET → list → DELETE round-trip", async ({

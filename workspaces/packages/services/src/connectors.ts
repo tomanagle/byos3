@@ -1,5 +1,6 @@
 import { AppError, Connector, createId } from "@byos3/core";
 import { ConnectorRecord, VolumeRecord, type ConnectBucketInput } from "@byos3/protocol";
+import { assertAllowedS3Endpoint } from "@byos3/s3";
 import type { ServiceContext } from "./context";
 import { assertWithinLimit, resolveEntitlement } from "./entitlement";
 
@@ -22,6 +23,15 @@ export async function connectBucket(
   ctx: ServiceContext,
   input: ConnectBucketInput,
 ): Promise<ConnectResult> {
+  // SSRF guard: the server calls input.endpoint server-side (probe now, CORS + listing later), so
+  // reject endpoints we must not reach (IMDS always; http/private unless this deploy allows them).
+  // Fail fast before sealing/persisting, so a bad endpoint never becomes a stored connector.
+  try {
+    assertAllowedS3Endpoint(input.endpoint, { allowPrivate: ctx.allowPrivateEndpoint });
+  } catch (err) {
+    throw new AppError("invalid_input", (err as Error)?.message ?? "endpoint is not allowed");
+  }
+
   // API-key callers act on the key's namespace; session callers on their active namespace (both are
   // resolved by the transport's composition root - api.md, ctx.ts).
   const namespaceId = ctx.principal.keyNamespaceId ?? ctx.principal.activeNamespaceId;
