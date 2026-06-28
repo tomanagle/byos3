@@ -2,44 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { cn } from "#/lib/utils";
 import { authClient } from "#/lib/auth-client";
-
-interface Org {
-  id: string;
-  name: string;
-  slug: string;
-}
+import { listWorkspaces } from "#/fn/workspaces";
+import { cn } from "#/lib/utils";
 
 /**
  * Workspace (organization) switcher. A user can belong to several orgs - their lazily-created
  * personal one and any team they were invited to (rbac.md, billing.md). The active org drives the
  * whole workspace (files, volumes, keys, team, billing), so switching pins a new active org on the
  * session and refetches everything namespace-scoped. Shows just the name when there's only one org.
+ *
+ * The list comes from our `listWorkspaces` server fn (an INNER JOIN that never returns dangling
+ * memberships, and reports the server-resolved active namespace) - not the raw Better Auth client
+ * list, which could include orphaned entries.
  */
 export function OrgSwitcher() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { data: session } = authClient.useSession();
-  const activeId = (session?.session as { activeOrganizationId?: string | null } | undefined)
-    ?.activeOrganizationId;
 
-  const orgs = useQuery({
-    queryKey: ["orgs"],
-    queryFn: async (): Promise<Org[]> => {
-      const r = await authClient.organization.list();
-      if (r.error) throw new Error(r.error.message ?? "failed");
-      return (r.data ?? []) as Org[];
-    },
-  });
-
-  // The ["orgs"] key is shared with billing/team screens (which cache the raw list), so be defensive:
-  // tolerate a non-array or null entries rather than crashing the rail.
-  const list: Org[] = Array.isArray(orgs.data)
-    ? orgs.data.filter((o): o is Org => o != null && typeof o.id === "string")
-    : [];
-  const active = list.find((o) => o.id === activeId) ?? list[0];
+  const ws = useQuery({ queryKey: ["workspaces"], queryFn: () => listWorkspaces() });
+  const list = ws.data?.workspaces ?? [];
+  const active = list.find((o) => o.id === ws.data?.activeId) ?? list[0];
 
   const switchTo = useMutation({
     mutationFn: async (id: string) => {

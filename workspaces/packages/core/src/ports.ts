@@ -30,6 +30,8 @@ export interface VolumeRepository {
 export interface NamespaceMembership {
   /** Organization/namespace id. */
   id: string;
+  /** Display name of the org. */
+  name: string;
   /** Org slug (a personal namespace is `personal-<userId>`; used to prefer team orgs as default). */
   slug: string;
   role: Role;

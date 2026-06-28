@@ -57,7 +57,9 @@ function ctxFor(
   const volume = new Volume(volRecord, { connector });
   const memberships: MembershipResolver = {
     roleFor: async () => null,
-    listNamespaces: async () => [{ id: "ns_1", slug: "personal-u1", role: "owner" }],
+    listNamespaces: async () => [
+      { id: "ns_1", name: "Personal", slug: "personal-u1", role: "owner" },
+    ],
     namespaceOwner: async () => "u1",
     memberCount: async () => 1,
   };

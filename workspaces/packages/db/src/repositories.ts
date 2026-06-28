@@ -106,11 +106,11 @@ export class D1MembershipRepository implements MembershipResolver {
 
   async listNamespaces(userId: string): Promise<NamespaceMembership[]> {
     const rows = await this.db
-      .select({ id: orgTbl.id, slug: orgTbl.slug, role: memberTbl.role })
+      .select({ id: orgTbl.id, name: orgTbl.name, slug: orgTbl.slug, role: memberTbl.role })
       .from(memberTbl)
       .innerJoin(orgTbl, eq(orgTbl.id, memberTbl.organizationId))
       .where(eq(memberTbl.userId, userId));
-    return rows.map((r) => ({ id: r.id, slug: r.slug, role: r.role as Role }));
+    return rows.map((r) => ({ id: r.id, name: r.name, slug: r.slug, role: r.role as Role }));
   }
 
   async namespaceOwner(namespaceId: string): Promise<string | null> {
