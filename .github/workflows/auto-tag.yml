@@ -1,0 +1,57 @@
+name: Auto-tag release
+
+# When a version bump lands on main (the `bun run release` PR merges), tag it `v<version>` so the
+# Deploy workflow fires automatically - no manual `bun run release:tag` step.
+#
+# Why a PAT (RELEASE_PAT): a tag pushed with the default GITHUB_TOKEN would NOT trigger another
+# workflow (GitHub's no-recursion rule), so deploy.yml wouldn't run; and the `v*` tag ruleset
+# restricts tag creation to maintainers. A fine-grained PAT (Contents: read+write on this repo,
+# created by a maintainer) satisfies both. If RELEASE_PAT is unset, this job no-ops and you tag
+# manually with `bun run release:tag`. See agents/docs/deployment.md.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auto-tag
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gate on RELEASE_PAT
+        id: gate
+        env:
+          RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+        run: |
+          if [ -z "$RELEASE_PAT" ]; then
+            echo "RELEASE_PAT not set - skipping auto-tag (use 'bun run release:tag')."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.enabled == 'true'
+        with:
+          fetch-depth: 0
+          # Push the tag with the PAT (not GITHUB_TOKEN) so deploy.yml is triggered.
+          token: ${{ secrets.RELEASE_PAT }}
+      - name: Tag v<version> when new
+        if: steps.gate.outputs.enabled == 'true'
+        run: |
+          version=$(node -p "require('./package.json').version")
+          tag="v${version}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null \
+            || git ls-remote --tags origin "${tag}" | grep -q "refs/tags/${tag}$"; then
+            echo "${tag} already exists - nothing to tag."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${tag}" -m "${tag}"
+          git push origin "${tag}"
+          echo "Pushed ${tag} - the Deploy workflow will run."

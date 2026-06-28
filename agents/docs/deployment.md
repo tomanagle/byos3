@@ -84,13 +84,18 @@ steps** so it works with a protected `main` (PR-required) without admin bypass:
    PR. Nothing is pushed to `main`. (`--dry-run` previews; `--skip-checks` skips the local gate - the
    PR's CI still gates the merge.)
 2. Review + **merge the PR** (CI must pass).
-3. `git switch main && git pull`, then `bun run release:tag` - on an up-to-date `main` it tags
-   `v<version>` and pushes **only the tag**. A tag push isn't a branch push, so branch protection
-   doesn't block it; the tag triggers `deploy.yml`.
+3. The tag is created `v<version>`, which triggers `deploy.yml`:
+   - **Automatically** if `RELEASE_PAT` is configured: `auto-tag.yml` runs on the merge to `main`,
+     sees the new version, and pushes the tag. Merging the PR is the whole release.
+   - **Manually** otherwise: `git switch main && git pull`, then `bun run release:tag` - on an
+     up-to-date `main` it pushes only the tag (a tag push isn't a branch push, so branch protection
+     doesn't block it).
 
-The tag must be created by a maintainer (guard `v*` tag creation with a tag ruleset). Because the
-bump lands via a reviewed PR and the release only ever pushes a tag, no one needs to bypass branch
-protection to ship.
+`v*` tag creation is restricted to maintainers by a tag ruleset. The auto-tag job needs a **PAT**
+(`RELEASE_PAT`, a fine-grained token with Contents: read+write) for two reasons: a tag pushed with
+the default `GITHUB_TOKEN` would NOT trigger `deploy.yml` (GitHub's no-recursion rule), and the PAT's
+maintainer identity satisfies the tag ruleset. Without `RELEASE_PAT`, `auto-tag.yml` no-ops and you
+use `bun run release:tag`. Either way the bump lands via a reviewed PR - no branch-protection bypass.
 
 ## Turnstile keys (split by trust boundary)
 

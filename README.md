@@ -72,6 +72,7 @@ workflow injects your domain and secrets at deploy time.
 | `CREDENTIAL_ENCRYPTION_KEY` | 32-byte base64 key - `openssl rand -base64 32` |
 | `STRIPE_SECRET_KEY` | **optional** - your **live** Stripe key. Enables billing: Pulumi provisions the product/prices/webhook and the app runs Checkout. **Omit to run with billing disabled (everything unlocked).** |
 | `AUTH_GITHUB_CLIENT_SECRET` | **optional** - GitHub OAuth app secret; enables "Continue with GitHub" (pair with `AUTH_GITHUB_CLIENT_ID`). Omit for email/password only. |
+| `RELEASE_PAT` | **optional** - fine-grained PAT (Contents: read+write). Lets `auto-tag.yml` tag + deploy automatically when a release PR merges. Omit and tag manually with `bun run release:tag`. |
 
 **Variables**
 
@@ -122,13 +123,18 @@ not this token; this token's R2 permission is only for creating the bucket.
 
 ### Deploy
 
-Releases are version tags. With a protected `main`, the flow is two steps (no admin bypass needed):
+Releases are version tags, and `main` is protected (no admin bypass needed):
 
 ```bash
 bun run release minor   # bump on a release/* branch + open a PR (CI gates it)
 # ...review + merge the PR...
-git switch main && git pull
-bun run release:tag     # tag v<version> on main and push the tag → triggers the deploy
+```
+
+With the **`RELEASE_PAT`** secret set, merging the PR is the whole release: `auto-tag.yml` tags
+`v<version>` on `main` and the deploy runs. Without it, finish manually:
+
+```bash
+git switch main && git pull && bun run release:tag   # pushes the tag → triggers the deploy
 ```
 
 (Or cut the tag by hand: `git tag v1.0.0 && git push origin v1.0.0`, or run the **Deploy** workflow
