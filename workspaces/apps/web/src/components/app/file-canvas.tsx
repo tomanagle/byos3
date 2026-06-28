@@ -291,7 +291,14 @@ export function FileCanvas({
           >
             <FolderPlus className="size-4" /> New folder
           </button>
-          <input ref={fileInput} type="file" multiple hidden onChange={pickFiles} />
+          <input
+            ref={fileInput}
+            type="file"
+            multiple
+            hidden
+            onChange={pickFiles}
+            data-testid="upload-input"
+          />
           <button
             type="button"
             onClick={() => fileInput.current?.click()}

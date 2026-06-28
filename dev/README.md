@@ -52,21 +52,52 @@ This is a dev convenience only - production deploys to Cloudflare via Wrangler (
 ## e2e tests (Playwright + a real S3-compatible fake bucket)
 
 The **e2e** suite lives in `workspaces/tests` and runs under **Playwright** (unit/integration tests
-stay with their packages, run by bun/vite). `docker-compose.e2e.yml` is a separate, minimal stack -
-a **MinIO** server + a one-shot bucket-creator - that the suite brings up/tears down automatically
-(Playwright `global-setup.ts` / `global-teardown.ts`).
+stay with their packages, run by bun/vite). It exercises two layers of real infrastructure:
+
+- **MinIO** (`docker-compose.e2e.yml`: a server + one-shot bucket-creator) - the "fake bucket",
+  brought up/torn down automatically by `global-setup.ts` / `global-teardown.ts`.
+- **The web app itself** - Playwright's `webServer` runs `bun run dev` (vite + the Cloudflare
+  plugin's workerd, on **:3000**). Both the worker (the connect probe) and the browser (presigned
+  transfers) are on the host, so they reach the same `localhost` MinIO - no container address split.
+  The app boots **billing-off** (no Stripe key), which unlocks every feature, so the team/invite flow
+  isn't seat-gated. global-setup adds `ALLOW_PRIVATE_S3_ENDPOINTS=true` to the web `.dev.vars` so the
+  worker may probe the loopback bucket.
+
+**Prereqs** (CI runs these; do them once locally): `bun run secrets:setup` (writes `.dev.vars`) and
+`bun run --filter='@byos3/web' db:migrate:local` (migrates the local D1). Then:
 
 ```bash
-bun run e2e          # global-setup ups MinIO → Playwright specs → global-teardown downs it
+bun run e2e          # global-setup ups MinIO → starts the web app → runs the specs → tears MinIO down
 bun run e2e:up        # just start MinIO (e.g. to connect from the web app)
 bun run e2e:down      # stop + remove it (and its volume)
 E2E_KEEP=1 bun run e2e # run the suite but leave MinIO up afterwards
 ```
 
-The flagship spec (`workspaces/tests/specs/storage-round-trip.spec.ts`) mounts MinIO via the
-**`custom`** provider and runs a presigned PUT→HEAD→GET→list→DELETE round-trip - the real
-direct-to-bucket transfer path (bytes never touch the worker). With `e2e:up` you can also mount it
-from the web app's **Connect** dialog as a **Custom S3** volume:
+**Compose flows** with the helpers + fixtures (`fixtures.ts`, `helpers/`):
+
+```ts
+const owner = await makeUser();          // fresh account in its own browser context
+await owner.register();                   // drives the real sign-up UI
+await owner.workspace.connectBucket({ ...minio });   // Connect dialog → mount
+await owner.workspace.uploadFile("a.txt", "hi");     // hidden input → presign → PUT
+// multi-user: const teammate = await makeUser(); … invite → accept → member
+```
+
+**Specs:**
+
+- `storage-round-trip.spec.ts` - presigned PUT→HEAD→GET→list→DELETE straight against MinIO via the
+  `custom` provider (the worker only signs; bytes never touch it). No app needed.
+- `sync-happy-path.spec.ts` - register → connect a bucket → upload a file → confirm it landed in the
+  bucket, through the real UI.
+- `team-invites.spec.ts` - an owner invites a teammate, who registers + accepts the (copyable) invite
+  link and becomes a member.
+- `billing.spec.ts` - asserts the billing-disabled (self-host) state in CI; the actual Stripe upgrade
+  is gated behind `E2E_STRIPE=1` (run locally with the `stripe` sidecar + a sandbox key).
+
+In **CI** (`.github/workflows/ci.yml` `e2e` job) the suite runs on every PR + push to main and uploads
+the Playwright **HTML report** as an artifact (`playwright-report`).
+
+With `e2e:up` you can also mount MinIO from the web app's **Connect** dialog as a **Custom S3** volume:
 
 > endpoint `http://localhost:9400` · key `byos3` · secret `byos3secret` · bucket `byos3-e2e`
 

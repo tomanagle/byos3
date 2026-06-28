@@ -147,6 +147,7 @@ export function ConnectDialog({
                 <button
                   key={p.id}
                   type="button"
+                  data-testid={`provider-${p.id}`}
                   onClick={() => setProvider(p.id)}
                   className={cn(
                     "flex flex-col gap-2 rounded-lg border p-3 text-left transition-colors",
