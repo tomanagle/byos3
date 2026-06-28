@@ -31,6 +31,24 @@ On connect: store the credential encrypted, then validate with a cheap `HeadBuck
 application key restricted to a bucket+name-prefix / S3 IAM policy on `arn:.../bucket/prefix/*`),
 not an account-root key. Volume count is a **plan limit** (`billing.md`).
 
+### Endpoint safety (SSRF)
+
+Presigning is **offline** (SigV4 = local HMAC, no network), so the data path never has the Worker
+fetch the endpoint - the client transfers bytes directly. But the *metadata* ops (probe on connect,
+`ListObjectsV2` browse, `GetBucketCors`/`PutBucketCors`) DO `fetch()` the user-supplied endpoint
+server-side, so a connector endpoint is an SSRF surface. Guards (`@byos3/s3` `endpoint.ts`,
+enforced in `createDriver` + the connect service):
+
+- **Cloud instance-metadata hosts are always blocked** (`169.254.169.254`, `169.254.170.2`,
+  `metadata.google.internal`, …) - no S3 lives there, and on a self-hosted VM they leak the host's
+  cloud credentials.
+- By default endpoints must be **https** and **public** (not loopback/private/link-local) - the
+  hosted, multi-tenant posture. Self-hosters who legitimately point at an internal **MinIO** set
+  **`ALLOW_PRIVATE_S3_ENDPOINTS=true`** (also set in local dev / e2e) to permit http + private hosts;
+  IMDS stays blocked regardless.
+- Driver `fetch`es are bounded (timeout + response-size cap) and never reflect the upstream response
+  body in error messages (don't turn a blind SSRF into a read gadget).
+
 ## Credential handling
 
 - Encrypt at rest with **envelope encryption** (`packages/crypto`): per-connector data key wrapped

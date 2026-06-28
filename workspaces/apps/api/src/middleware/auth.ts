@@ -1,6 +1,7 @@
 import type { MiddlewareHandler } from "hono";
 
 import { createAuth } from "@byos3/auth";
+import type { DriverFactory } from "@byos3/core";
 import { CredentialVault } from "@byos3/crypto";
 import {
   D1ConnectorRepository,
@@ -70,7 +71,13 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
       });
     }
     const vault = new CredentialVault(c.env.CREDENTIAL_ENCRYPTION_KEY);
-    const connectors = new D1ConnectorRepository(db, vault, createDriver);
+    const cenv = c.env as { STRIPE_SECRET_KEY?: string; ALLOW_PRIVATE_S3_ENDPOINTS?: string };
+    // SSRF policy: guard user-supplied endpoints (https + public by default; private only when this
+    // deploy opts in). Bound into the driver factory so every driver build is checked. See endpoint.ts.
+    const allowPrivateEndpoint = cenv.ALLOW_PRIVATE_S3_ENDPOINTS === "true";
+    const driverFactory: DriverFactory = (config) =>
+      createDriver(config, { allowPrivate: allowPrivateEndpoint });
+    const connectors = new D1ConnectorRepository(db, vault, driverFactory);
     const ctx: ServiceContext = {
       principal: {
         userId: ownerUserId,
@@ -84,9 +91,10 @@ export function authMiddleware(): MiddlewareHandler<ApiContext> {
       access: new D1ResourceAccessRepository(db),
       subscriptions: new D1SubscriptionRepository(db),
       // No Stripe key => billing off => entitlement gates lifted (self-hosting). See billing.md.
-      billingEnabled: Boolean((c.env as { STRIPE_SECRET_KEY?: string }).STRIPE_SECRET_KEY),
+      billingEnabled: Boolean(cenv.STRIPE_SECRET_KEY),
+      allowPrivateEndpoint,
       vault,
-      driverFactory: createDriver,
+      driverFactory,
     };
 
     c.set("ctx", ctx);

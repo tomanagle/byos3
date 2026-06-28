@@ -1,4 +1,5 @@
 export { createDriver } from "./factory";
+export { assertAllowedS3Endpoint, type EndpointPolicy } from "./endpoint";
 export { CAPABILITIES } from "./capabilities";
 export { SigV4Driver } from "./sigv4-driver";
 export {

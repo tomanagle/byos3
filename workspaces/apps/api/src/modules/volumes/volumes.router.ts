@@ -16,6 +16,10 @@ import { serializeVolume } from "./volumes.serializer";
 
 const app = createRouter();
 
+// Response envelopes parsed before returning, so the schema is enforced (not just documented) and
+// no field outside it can leak. Built once and reused per route.
+const VolumeListSchema = listSchema(VolumeSchema, "VolumeList");
+
 const ListRoute = createRoute({
   method: "get",
   path: "/v1/volumes",
@@ -23,7 +27,7 @@ const ListRoute = createRoute({
   security: [{ ApiKey: [] }],
   responses: {
     200: {
-      content: { "application/json": { schema: listSchema(VolumeSchema, "VolumeList") } },
+      content: { "application/json": { schema: VolumeListSchema } },
       description: "Mounted volumes",
     },
     401: jsonError("Unauthenticated"),
@@ -35,12 +39,12 @@ const ListRoute = createRoute({
 app.openapi(ListRoute, async (c) => {
   const volumes = await listVolumes(c.get("ctx"));
   return c.json(
-    {
+    VolumeListSchema.parse({
       object: "list" as const,
       data: volumes.map(serializeVolume),
       has_more: false,
       next_cursor: null,
-    },
+    }),
     200,
   );
 });
@@ -75,7 +79,7 @@ app.openapi(UploadIntentRoute, async (c) => {
     hash: body.hash,
     expiresIn: body.expiresIn,
   });
-  return c.json(presigned, 200);
+  return c.json(PresignedRequestSchema.parse(presigned), 200);
 });
 
 const DownloadRoute = createRoute({
@@ -100,7 +104,7 @@ app.openapi(DownloadRoute, async (c) => {
   const { id } = c.req.valid("param");
   const { hash } = c.req.valid("query");
   const presigned = await downloadUrl(c.get("ctx"), { volumeId: id, hash });
-  return c.json(presigned, 200);
+  return c.json(PresignedRequestSchema.parse(presigned), 200);
 });
 
 export default app;

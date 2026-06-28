@@ -122,6 +122,10 @@ is no manual bootstrap. To drive it locally: `pulumi login "$PULUMI_BACKEND_URL"
   Pulumi provisions the prices/webhook and the web Worker runs Checkout; omit to keep billing off).
 - **Variables:** `APP_DOMAIN` (your apex, e.g. `example.com`); optional `PULUMI_STACK` (default
   `production`) and `PULUMI_STATE_BUCKET` (default `byos3-pulumi-state`).
+- **Worker var (optional):** `ALLOW_PRIVATE_S3_ENDPOINTS=true` relaxes the connector SSRF guard to
+  permit http + private/loopback endpoints (self-hosted MinIO). Leave unset on a hosted/multi-tenant
+  deploy = require https + public hosts. Set it as a Worker var/secret on the web + api Workers (it's
+  in the local `.dev.vars`). Cloud instance-metadata hosts are blocked regardless. See `storage-byo-s3.md`.
 - The domain's **zone must already exist** in your Cloudflare account (Workers attach the custom
   domains + DNS/TLS automatically). D1 is created by Pulumi and its id injected at deploy - no manual
   `wrangler d1 create` needed. See the repo `README.md` for the full forker walkthrough.

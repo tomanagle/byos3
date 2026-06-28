@@ -89,6 +89,7 @@ function ctxFor(
     access,
     subscriptions,
     billingEnabled: opts.billingEnabled ?? true,
+    allowPrivateEndpoint: true,
     vault,
     driverFactory: createDriver,
   };

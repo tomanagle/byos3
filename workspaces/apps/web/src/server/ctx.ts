@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
-import { CredentialVault } from "@byos3/crypto";
+import type { DriverFactory } from "@byos3/core";
 import type { PlatformRole } from "@byos3/core/authz";
+import { CredentialVault } from "@byos3/crypto";
 import {
   createSessionDb,
   D1ConnectorRepository,
@@ -68,14 +69,24 @@ export async function createServiceContext(headers: Headers): Promise<ServiceCon
   const session = await auth.api.getSession({ headers, query: { disableCookieCache: true } });
   if (!session?.user) return null;
 
-  const e = env as { CREDENTIAL_ENCRYPTION_KEY: string; STRIPE_SECRET_KEY?: string };
+  const e = env as {
+    CREDENTIAL_ENCRYPTION_KEY: string;
+    STRIPE_SECRET_KEY?: string;
+    ALLOW_PRIVATE_S3_ENDPOINTS?: string;
+  };
   const db = createSessionDb(env.DB);
   const activeId =
     (session.session as { activeOrganizationId?: string | null }).activeOrganizationId ?? null;
   const activeNamespaceId = await resolveActiveNamespace(headers, db, session.user.id, activeId);
 
   const vault = new CredentialVault(e.CREDENTIAL_ENCRYPTION_KEY);
-  const connectors = new D1ConnectorRepository(db, vault, createDriver);
+  // SSRF policy: hosted deploys require https + public endpoints; self-host/dev opt into private
+  // (internal MinIO) via ALLOW_PRIVATE_S3_ENDPOINTS. Bind it into the driver factory so every driver
+  // built from this context (probe, list, CORS) is guarded. See @byos3/s3 endpoint.ts.
+  const allowPrivateEndpoint = e.ALLOW_PRIVATE_S3_ENDPOINTS === "true";
+  const driverFactory: DriverFactory = (config) =>
+    createDriver(config, { allowPrivate: allowPrivateEndpoint });
+  const connectors = new D1ConnectorRepository(db, vault, driverFactory);
   return {
     principal: {
       userId: session.user.id,
@@ -89,7 +100,8 @@ export async function createServiceContext(headers: Headers): Promise<ServiceCon
     subscriptions: new D1SubscriptionRepository(db),
     // No Stripe key => billing off => every entitlement gate is lifted (self-hosting). See billing.md.
     billingEnabled: Boolean(e.STRIPE_SECRET_KEY),
+    allowPrivateEndpoint,
     vault,
-    driverFactory: createDriver,
+    driverFactory,
   };
 }

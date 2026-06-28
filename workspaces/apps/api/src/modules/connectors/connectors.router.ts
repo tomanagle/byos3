@@ -31,7 +31,9 @@ const ConnectRoute = createRoute({
 // oxlint-disable-next-line jest/require-hook -- registers an OpenAPI route handler, not a test hook
 app.openapi(ConnectRoute, async (c) => {
   const result = await connectBucket(c.get("ctx"), c.req.valid("json"));
-  return c.json(result, 200);
+  // Parse the response too: strips any field not in the schema, so a future change can't silently
+  // leak data through this route. The schema is the single contract for both directions.
+  return c.json(ConnectResultSchema.parse(result), 200);
 });
 
 export default app;

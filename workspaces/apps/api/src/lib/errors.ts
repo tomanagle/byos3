@@ -82,6 +82,13 @@ export function fromAppError(err: AppError): ApiError {
         message: err.message,
         status: 400,
       });
+    case "invalid_input":
+      return new ApiError({
+        type: "invalid_request_error",
+        code: "validation_failed",
+        message: err.message,
+        status: 400,
+      });
     case "limit_exceeded":
       // 402: the request is valid but the namespace's plan must be upgraded to proceed.
       return new ApiError({

@@ -20,6 +20,7 @@ test("serves an OpenAPI 3.1 document", async () => {
 test("documents every resource path", async () => {
   const paths = Object.keys((await spec()).paths as Record<string, unknown>).toSorted();
   expect(paths).toEqual([
+    "/healthz",
     "/v1/connectors",
     "/v1/volumes",
     "/v1/volumes/{id}/download-url",
