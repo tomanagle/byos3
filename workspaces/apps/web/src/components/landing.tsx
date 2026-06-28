@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, GitBranch, KeyRound, Share2, Zap } from "lucide-react";
 import { Footer } from "#/components/footer";
+import { GitHubStar } from "#/components/github-star";
 import { PROVIDERS } from "#/lib/providers";
 import { cn } from "#/lib/utils";
 
@@ -41,6 +42,7 @@ export function Landing() {
           byos<span className="text-primary">3</span>
         </span>
         <nav className="flex items-center gap-2">
+          <GitHubStar className="hidden sm:inline-flex" />
           <Link
             to="/sign-in"
             className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
