@@ -78,12 +78,13 @@ export class TeamPage {
     return this.page.getByRole("listitem").filter({ hasText: email });
   }
 
-  /** Click "Copy link" on a pending invite and return the accept URL from the clipboard. */
+  /** The accept URL for a pending invite (read off the "Copy link" button - no clipboard needed). */
   async inviteLink(email: string): Promise<string> {
-    await this.pendingInvite(email)
+    const url = await this.pendingInvite(email)
       .getByRole("button", { name: /copy link/i })
-      .click();
-    return this.page.evaluate(() => navigator.clipboard.readText());
+      .getAttribute("data-accept-url");
+    if (!url) throw new Error(`no accept link for ${email}`);
+    return url;
   }
 }
 

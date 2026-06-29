@@ -22,14 +22,18 @@ export function uniqueCreds(over: Partial<Creds> = {}): Creds {
 
 /**
  * A test user with its OWN isolated browser context (so multi-user flows - invite/accept, switching -
- * stay independent). `register()` / `login()` drive the real auth UI; the `Workspace` / page objects
- * hang off `.page`. Created via the `makeUser` fixture, which disposes them at the end of the test.
+ * stay independent). `register()` / `login()` hit the Better Auth API through the context's request
+ * (Playwright's recommended auth-setup path: fast + reliable, and the session cookie is shared with
+ * the context's pages), then land in the workspace. The product UI (connect, upload, invite, accept)
+ * is what the specs actually exercise via the `Workspace` / page objects on `.page`. Created via the
+ * `makeUser` fixture, which disposes them at the end of the test.
  */
 export class User {
   readonly workspace: Workspace;
 
   private constructor(
     readonly creds: Creds,
+    readonly baseURL: string,
     readonly context: BrowserContext,
     readonly page: Page,
   ) {
@@ -43,26 +47,30 @@ export class User {
       permissions: ["clipboard-read", "clipboard-write"],
     });
     const page = await context.newPage();
-    return new User(creds, context, page);
+    return new User(creds, baseURL, context, page);
   }
 
-  /** Register through the sign-up form and land in the workspace. */
+  /** Create the account via the Better Auth API (auto-signs-in), then open the workspace. */
   async register(): Promise<this> {
-    await this.page.goto("/sign-up");
-    await this.page.getByLabel("Name").fill(this.creds.name);
-    await this.page.getByLabel("Email").fill(this.creds.email);
-    await this.page.getByLabel("Password").fill(this.creds.password);
-    await this.page.getByRole("button", { name: /create account/i }).click();
+    const res = await this.context.request.post("/api/auth/sign-up/email", {
+      // Better Auth checks Origin against trustedOrigins (which includes localhost:3000).
+      headers: { origin: this.baseURL },
+      data: { name: this.creds.name, email: this.creds.email, password: this.creds.password },
+    });
+    if (!res.ok()) throw new Error(`sign-up failed: ${res.status()} ${await res.text()}`);
+    await this.page.goto("/");
     await this.expectWorkspace();
     return this;
   }
 
-  /** Sign in through the form (the account must already exist). */
+  /** Sign in via the Better Auth API (the account must already exist), then open the workspace. */
   async login(): Promise<this> {
-    await this.page.goto("/sign-in");
-    await this.page.getByLabel("Email").fill(this.creds.email);
-    await this.page.getByLabel("Password").fill(this.creds.password);
-    await this.page.getByRole("button", { name: /^sign in$/i }).click();
+    const res = await this.context.request.post("/api/auth/sign-in/email", {
+      headers: { origin: this.baseURL },
+      data: { email: this.creds.email, password: this.creds.password },
+    });
+    if (!res.ok()) throw new Error(`sign-in failed: ${res.status()} ${await res.text()}`);
+    await this.page.goto("/");
     await this.expectWorkspace();
     return this;
   }
